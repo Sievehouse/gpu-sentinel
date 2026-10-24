@@ -4,7 +4,7 @@ Stages run in order, from cheap and local to expensive and cluster-wide, so a
 broken node is caught before it can spoil a multi-hour burn-in:
 
 1. audit       inventory, driver and topology facts per node
-2. single_node DCGM diagnostics per node
+2. single_node DCGM diagnostics (NVIDIA) or ROCm Validation Suite (AMD) per node
 3. rdma        per-rail RDMA bandwidth between neighbouring nodes
 4. collectives nccl-tests all-reduce and all-to-all at growing world sizes
 5. burn_in     GPUs and fabric stressed at the same time for hours
@@ -22,12 +22,32 @@ from .inventory import Inventory
 
 STAGES = ("audit", "single_node", "rdma", "collectives", "burn_in", "storage")
 
-AUDIT_COMMAND = (
-    "nvidia-smi --query-gpu=index,uuid,name,driver_version,pci.bus_id --format=csv,noheader; "
-    "echo '--- topo'; nvidia-smi topo -m; "
-    "echo '--- kernel'; uname -r; "
-    "echo '--- rdma'; (ibstat 2>/dev/null || ibv_devinfo 2>/dev/null || echo 'no RDMA tools found')"
-)
+_RDMA_AUDIT = "echo '--- rdma'; (ibstat 2>/dev/null || ibv_devinfo 2>/dev/null || echo 'no RDMA tools found')"
+
+# The first section of each audit lists one GPU per line; the report counts
+# GPUs there and keeps the rest as a record.
+AUDIT_COMMANDS = {
+    "nvidia": (
+        "nvidia-smi --query-gpu=index,uuid,name,driver_version,pci.bus_id --format=csv,noheader; "
+        "echo '--- topo'; nvidia-smi topo -m; "
+        "echo '--- kernel'; uname -r; " + _RDMA_AUDIT
+    ),
+    # PCI functions bound to the amdgpu driver, as the provider-side agent
+    # counts them, then amd-smi's own view for the record.
+    "amd": (
+        r"ls -1 /sys/bus/pci/drivers/amdgpu | grep -E '^[0-9a-f]{4}:[0-9a-f]{2}:[0-9a-f]{2}\.[0-7]$'; "
+        "echo '--- amd-smi'; amd-smi list; amd-smi static; "
+        "echo '--- topo'; (amd-smi topology 2>/dev/null || rocm-smi --showtopo); "
+        "echo '--- kernel'; uname -r; " + _RDMA_AUDIT
+    ),
+}
+AUDIT_COMMAND = AUDIT_COMMANDS["nvidia"]  # kept for callers of version 0.1
+
+# Default single-node diagnostic per vendor: (task kind, command).
+SINGLE_NODE = {
+    "nvidia": ("dcgm", "dcgmi diag -r 3"),
+    "amd": ("rvs", "rvs -c /opt/rocm/share/rocm-validation-suite/conf/gst_single.conf"),
+}
 
 
 @dataclass(frozen=True)
@@ -48,12 +68,14 @@ class Plan:
     gpus_per_node: int
     nodes: tuple[str, ...]
     tasks: list[Task]
+    vendor: str = "nvidia"
 
     def to_dict(self) -> dict:
         return {
             "apiVersion": "capacity-ledger/v1alpha1",
             "kind": "AcceptancePlan",
             "cluster": self.cluster,
+            "vendor": self.vendor,
             "gpusPerNode": self.gpus_per_node,
             "nodes": list(self.nodes),
             "tasks": [asdict(t) | {"nodes": list(t.nodes)} for t in self.tasks],
@@ -62,7 +84,7 @@ class Plan:
     @staticmethod
     def from_dict(d: dict) -> "Plan":
         tasks = [Task(**(t | {"nodes": tuple(t["nodes"])})) for t in d["tasks"]]
-        return Plan(cluster=d["cluster"], gpus_per_node=d["gpusPerNode"], nodes=tuple(d["nodes"]), tasks=tasks)
+        return Plan(cluster=d["cluster"], gpus_per_node=d["gpusPerNode"], nodes=tuple(d["nodes"]), tasks=tasks, vendor=d.get("vendor", "nvidia"))
 
     def stage(self, name: str) -> list[Task]:
         return [t for t in self.tasks if t.stage == name]
@@ -106,10 +128,14 @@ def build_plan(inv: Inventory) -> Plan:
     tasks: list[Task] = []
     nodes = inv.nodes
 
+    audit = AUDIT_COMMANDS[inv.vendor]
     for n in nodes:
-        tasks.append(Task(f"audit:{n}", "audit", "audit", (n,), per_node(inv, n, AUDIT_COMMAND), timeout_s=300))
+        tasks.append(Task(f"audit:{n}", "audit", "audit", (n,), per_node(inv, n, audit), timeout_s=300, meta={"vendor": inv.vendor}))
+    kind, diag = SINGLE_NODE[inv.vendor]
+    if inv.single_node_command:
+        kind, diag = "diag", inv.single_node_command
     for n in nodes:
-        tasks.append(Task(f"dcgm:{n}", "single_node", "dcgm", (n,), per_node(inv, n, "dcgmi diag -r 3"), timeout_s=3600))
+        tasks.append(Task(f"{kind}:{n}", "single_node", kind, (n,), per_node(inv, n, diag), timeout_s=3600, meta={"vendor": inv.vendor}))
 
     if inv.rdma_devices and len(nodes) > 1 and inv.launcher != "local":
         pairs = [(nodes[i], nodes[(i + 1) % len(nodes)]) for i in range(len(nodes))]
@@ -169,4 +195,4 @@ def build_plan(inv: Inventory) -> Plan:
                 )
                 tasks.append(Task(f"storage:{rw}:{n}:{path}", "storage", "fio", (n,), per_node(inv, n, fio), timeout_s=1800, meta={"rw": rw, "path": path}))
 
-    return Plan(cluster=inv.cluster, gpus_per_node=inv.gpus_per_node, nodes=nodes, tasks=tasks)
+    return Plan(cluster=inv.cluster, gpus_per_node=inv.gpus_per_node, nodes=nodes, tasks=tasks, vendor=inv.vendor)

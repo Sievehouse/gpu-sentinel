@@ -20,10 +20,14 @@ def count_gpus(text: str) -> int:
     """Count GPU lines in nvidia-smi CSV output (one GPU per line).
 
     Lines that do not look like a GPU record (for example error messages)
-    are ignored: a record starts with the integer GPU index.
+    are ignored: a record starts with the integer GPU index. Counting stops
+    at the first ``--- `` separator of an audit, so later sections (topology,
+    RDMA) cannot add to the count.
     """
     n = 0
     for line in text.splitlines():
+        if line.startswith("--- "):
+            break
         head = line.split(",", 1)[0].strip()
         if head.isdigit():
             n += 1

@@ -1,0 +1,16 @@
+# Inventory for a small AMD Instinct acceptance run. Adjust names, devices and paths.
+cluster: example-mi300x-16gpu
+vendor: amd                  # nvidia (default) | amd
+launcher: slurm              # slurm | mpirun | local
+nodes: [mi300-01, mi300-02]
+gpus_per_node: 8             # amdgpu PCI functions a healthy node shows (partitioning changes this)
+# RDMA device names depend on the NIC: mlx5_N for NVIDIA ConnectX, bnxt_re<N> for Broadcom.
+rdma_devices: [bnxt_re0, bnxt_re1, bnxt_re2, bnxt_re3, bnxt_re4, bnxt_re5, bnxt_re6, bnxt_re7]
+nccl_tests_dir: /opt/rccl-tests/build   # rccl-tests: same binaries and output as nccl-tests
+burn_in_minutes: 480
+storage_paths: [/mnt/shared/acceptance]
+python: python3
+burnin_script: harness/scripts/burnin.py
+# The default single-node diagnostic is the ROCm Validation Suite GPU stress test with the
+# generic configuration. Prefer the GPU-specific one, or AMD's field health check, if installed:
+# single_node_command: rvs -c /opt/rocm/share/rocm-validation-suite/conf/MI300X/gst_single.conf

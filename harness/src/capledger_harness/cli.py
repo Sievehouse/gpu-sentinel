@@ -133,7 +133,7 @@ def main(argv: list[str] | None = None) -> int:
     s.add_argument("file")
     s.set_defaults(fn=cmd_parse_nccl)
 
-    s = sub.add_parser("convert-contract", help="YAML contract spec -> engine JSON")
+    s = sub.add_parser("convert-contract", help="YAML contract spec -> JSON (capledger 0.2+ also reads YAML directly)")
     s.add_argument("--in", dest="input", required=True)
     s.add_argument("--out", required=True)
     s.set_defaults(fn=cmd_convert)

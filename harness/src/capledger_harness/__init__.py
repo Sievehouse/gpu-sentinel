@@ -5,4 +5,4 @@ Plans and runs cluster acceptance tests with proven open-source tools
 slow nodes against their peers and localises faulty nodes with group testing.
 """
 
-__version__ = "0.1.0"
+__version__ = "0.2.0"

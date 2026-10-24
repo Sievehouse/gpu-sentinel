@@ -21,10 +21,14 @@ from datetime import datetime, timezone
 import yaml
 
 from .baseline import find_outliers
+from .parsers.amdgpu import count_amd_gpus, rvs_failed
 from .parsers.nccl import parse_nccl_output
 from .parsers.nvsmi import count_gpus
 
 ORDER = {"accept": 0, "review": 1, "reject": 2}
+# Single-node diagnostics by task kind: DCGM (NVIDIA), the ROCm Validation
+# Suite (AMD) or the inventory's own single_node_command.
+DIAGNOSTICS = {"dcgm": "DCGM diagnostics", "rvs": "ROCm Validation Suite", "diag": "single-node diagnostic"}
 
 
 @dataclass
@@ -32,6 +36,8 @@ class Criteria:
     """Pass thresholds. Calibrate them per GPU, NIC and topology."""
 
     nccl_min_busbw_gbps: dict[str, dict[int, float]] = field(default_factory=dict)
+    # Reject nodes whose single-node diagnostic (DCGM, RVS or a custom
+    # command) fails. The name predates AMD support.
     require_dcgm_pass: bool = True
     outlier_z: float = 3.5
     outlier_rel: float = 0.05
@@ -79,11 +85,15 @@ def build_report(
                 flag(n, "review", f"{r['task_id']} timed out")
             continue
         if kind == "audit":
-            found = count_gpus(r["stdout"])
+            amd = (r.get("meta") or {}).get("vendor") == "amd"
+            found = count_amd_gpus(r["stdout"]) if amd else count_gpus(r["stdout"])
             if found < expected_gpus:
                 flag(rnodes[0], "reject", f"only {found} of {expected_gpus} GPUs visible")
-        elif kind == "dcgm" and criteria.require_dcgm_pass and r["returncode"] != 0:
-            flag(rnodes[0], "reject", f"DCGM diagnostics failed (exit {r['returncode']})")
+        elif kind in DIAGNOSTICS and criteria.require_dcgm_pass:
+            if r["returncode"] != 0:
+                flag(rnodes[0], "reject", f"{DIAGNOSTICS[kind]} failed (exit {r['returncode']})")
+            elif kind == "rvs" and rvs_failed(r["stdout"]):
+                flag(rnodes[0], "reject", f"{DIAGNOSTICS[kind]} reported a failed check")
         elif kind == "nccl":
             res = parse_nccl_output(r["stdout"])
             op, size = r["meta"].get("op"), r["meta"].get("world_nodes")
