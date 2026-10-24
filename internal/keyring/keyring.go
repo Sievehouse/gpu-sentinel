@@ -193,6 +193,21 @@ func (k *Keyring) Lookup(id string) (*Entry, bool) {
 	return nil, false
 }
 
+// Public returns the entry's public key.
+func (e *Entry) Public() ed25519.PublicKey { return e.pub }
+
+// KeyAt returns the entry for id if the key is enrolled and valid at t.
+func (k *Keyring) KeyAt(id string, t time.Time) (*Entry, error) {
+	e, ok := k.Lookup(id)
+	if !ok {
+		return nil, fmt.Errorf("key %s is not in the keyring", id)
+	}
+	if err := e.CheckTime(t); err != nil {
+		return nil, err
+	}
+	return e, nil
+}
+
 // PublicKeys returns every trusted key indexed by id, for evidence.Verify.
 func (k *Keyring) PublicKeys() map[string]ed25519.PublicKey {
 	out := make(map[string]ed25519.PublicKey, len(k.Keys))
