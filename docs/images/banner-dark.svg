@@ -1,0 +1,59 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="360" viewBox="0 0 1280 360" role="img" aria-labelledby="t d">
+<title id="t">GPU Sentinel</title>
+<desc id="d">GPU Sentinel: signed, replayable evidence of delivered GPU capacity. The example month shows 16 nodes: 11 up, 5 with counted downtime (gpu-003, 005, 011, 014, 016) and 2 with excluded time (gpu-010, 012); availability 99.7021%, 5% credit of $15,000.</desc>
+<rect x="0.5" y="0.5" width="1279.0" height="359.0" rx="12" fill="#1a1a19" stroke="#383835"/>
+<text x="64.0" y="92.0" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="14" font-weight="600" fill="#898781" text-anchor="start" letter-spacing="1.5">OPEN SOURCE  ·  APACHE-2.0  ·  PRE-ALPHA v0.2</text>
+<text x="60.0" y="168.0" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="76" font-weight="700" fill="#f0efec" text-anchor="start" letter-spacing="-1.5">GPU Sentinel</text>
+<text x="64.0" y="214.0" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="24" font-weight="400" fill="#c3c2b7" text-anchor="start">Signed, replayable evidence of the GPU capacity</text>
+<text x="64.0" y="246.0" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="24" font-weight="400" fill="#c3c2b7" text-anchor="start">a cluster actually delivered.</text>
+<rect x="64.0" y="280.0" width="181.8" height="34.0" rx="17" fill="#232321" stroke="#383835"/>
+<text x="154.9" y="302.0" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="15" font-weight="500" fill="#f0efec" text-anchor="middle">Acceptance bundles</text>
+<rect x="255.8" y="280.0" width="206.1" height="34.0" rx="17" fill="#232321" stroke="#383835"/>
+<text x="358.8" y="302.0" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="15" font-weight="500" fill="#f0efec" text-anchor="middle">Sealed SLA statements</text>
+<rect x="471.9" y="280.0" width="287.1" height="34.0" rx="17" fill="#232321" stroke="#383835"/>
+<text x="615.5" y="302.0" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="15" font-weight="500" fill="#f0efec" text-anchor="middle">Provider ↔ tenant corroboration</text>
+<rect x="806.0" y="40.0" width="434.0" height="280.0" rx="10" fill="#232321" stroke="#383835"/>
+<text x="826.0" y="72.0" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="15" font-weight="600" fill="#f0efec" text-anchor="start">October 2026  ·  16 nodes × 8 GPUs</text>
+<text x="1220.0" y="72.0" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="13" font-weight="400" fill="#898781" text-anchor="end">example data</text>
+<rect x="826.0" y="90.0" width="92.0" height="34.0" rx="6" fill="#184f95"/>
+<text x="872.0" y="112.0" font-family="ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace" font-size="13" font-weight="600" fill="#cde2fb" text-anchor="middle">gpu-001</text>
+<rect x="926.0" y="90.0" width="92.0" height="34.0" rx="6" fill="#184f95"/>
+<text x="972.0" y="112.0" font-family="ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace" font-size="13" font-weight="600" fill="#cde2fb" text-anchor="middle">gpu-002</text>
+<rect x="1026.0" y="90.0" width="92.0" height="34.0" rx="6" fill="#d03b3b"/>
+<text x="1072.0" y="112.0" font-family="ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace" font-size="13" font-weight="600" fill="#ffffff" text-anchor="middle">gpu-003 ×</text>
+<rect x="1126.0" y="90.0" width="92.0" height="34.0" rx="6" fill="#184f95"/>
+<text x="1172.0" y="112.0" font-family="ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace" font-size="13" font-weight="600" fill="#cde2fb" text-anchor="middle">gpu-004</text>
+<rect x="826.0" y="132.0" width="92.0" height="34.0" rx="6" fill="#d03b3b"/>
+<text x="872.0" y="154.0" font-family="ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace" font-size="13" font-weight="600" fill="#ffffff" text-anchor="middle">gpu-005 ×</text>
+<rect x="926.0" y="132.0" width="92.0" height="34.0" rx="6" fill="#184f95"/>
+<text x="972.0" y="154.0" font-family="ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace" font-size="13" font-weight="600" fill="#cde2fb" text-anchor="middle">gpu-006</text>
+<rect x="1026.0" y="132.0" width="92.0" height="34.0" rx="6" fill="#184f95"/>
+<text x="1072.0" y="154.0" font-family="ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace" font-size="13" font-weight="600" fill="#cde2fb" text-anchor="middle">gpu-007</text>
+<rect x="1126.0" y="132.0" width="92.0" height="34.0" rx="6" fill="#184f95"/>
+<text x="1172.0" y="154.0" font-family="ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace" font-size="13" font-weight="600" fill="#cde2fb" text-anchor="middle">gpu-008</text>
+<rect x="826.0" y="174.0" width="92.0" height="34.0" rx="6" fill="#184f95"/>
+<text x="872.0" y="196.0" font-family="ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace" font-size="13" font-weight="600" fill="#cde2fb" text-anchor="middle">gpu-009</text>
+<rect x="926.0" y="174.0" width="92.0" height="34.0" rx="6" fill="#52514e"/>
+<text x="972.0" y="196.0" font-family="ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace" font-size="13" font-weight="600" fill="#c3c2b7" text-anchor="middle">gpu-010 –</text>
+<rect x="1026.0" y="174.0" width="92.0" height="34.0" rx="6" fill="#d03b3b"/>
+<text x="1072.0" y="196.0" font-family="ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace" font-size="13" font-weight="600" fill="#ffffff" text-anchor="middle">gpu-011 ×</text>
+<rect x="1126.0" y="174.0" width="92.0" height="34.0" rx="6" fill="#52514e"/>
+<text x="1172.0" y="196.0" font-family="ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace" font-size="13" font-weight="600" fill="#c3c2b7" text-anchor="middle">gpu-012 –</text>
+<rect x="826.0" y="216.0" width="92.0" height="34.0" rx="6" fill="#184f95"/>
+<text x="872.0" y="238.0" font-family="ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace" font-size="13" font-weight="600" fill="#cde2fb" text-anchor="middle">gpu-013</text>
+<rect x="926.0" y="216.0" width="92.0" height="34.0" rx="6" fill="#d03b3b"/>
+<text x="972.0" y="238.0" font-family="ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace" font-size="13" font-weight="600" fill="#ffffff" text-anchor="middle">gpu-014 ×</text>
+<rect x="1026.0" y="216.0" width="92.0" height="34.0" rx="6" fill="#184f95"/>
+<text x="1072.0" y="238.0" font-family="ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace" font-size="13" font-weight="600" fill="#cde2fb" text-anchor="middle">gpu-015</text>
+<rect x="1126.0" y="216.0" width="92.0" height="34.0" rx="6" fill="#d03b3b"/>
+<text x="1172.0" y="238.0" font-family="ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace" font-size="13" font-weight="600" fill="#ffffff" text-anchor="middle">gpu-016 ×</text>
+<rect x="826.0" y="262.0" width="12.0" height="12.0" rx="3" fill="#184f95"/>
+<text x="844.0" y="272.0" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="13" font-weight="400" fill="#c3c2b7" text-anchor="start">up</text>
+<rect x="880.4" y="262.0" width="12.0" height="12.0" rx="3" fill="#d03b3b"/>
+<text x="898.4" y="272.0" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="13" font-weight="400" fill="#c3c2b7" text-anchor="start">× counted downtime</text>
+<rect x="1050.0" y="262.0" width="12.0" height="12.0" rx="3" fill="#52514e"/>
+<text x="1068.0" y="272.0" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="13" font-weight="400" fill="#c3c2b7" text-anchor="start">– excluded</text>
+<text x="826.0" y="306.0" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="26" font-weight="700" fill="#f0efec" text-anchor="start">99.7021%</text>
+<text x="956.0" y="306.0" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="15" font-weight="400" fill="#c3c2b7" text-anchor="start">available  →  5% credit = $15,000</text>
+<text x="826.0" y="306.0" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="1" font-weight="400" fill="#f0efec" text-anchor="start"></text>
+</svg>

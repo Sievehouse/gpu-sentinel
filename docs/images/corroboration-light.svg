@@ -1,0 +1,46 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="480" viewBox="0 0 960 480" role="img" aria-labelledby="t d">
+<title id="t">Two vantage points, one comparison</title>
+<desc id="d">Of 136,260 node-seconds of recorded downtime, 127,580 (93.63%) were seen by both the provider and the tenant probe, 100 only by the provider and 8,580 only by the tenant. Disputed nodes: gpu-012 5,400 s tenant-only, gpu-009 3,000 s tenant-only, gpu-005 120 s tenant-only, gpu-003 60 s each side, gpu-016 40 s provider-only.</desc>
+<rect x="0.5" y="0.5" width="959.0" height="479.0" rx="12" fill="#fcfcfb" stroke="#e1e0d9"/>
+<text x="32.0" y="44.0" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="20" font-weight="650" fill="#0b0b0b" text-anchor="start">Two vantage points, one comparison</text>
+<text x="32.0" y="70.0" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="14" font-weight="400" fill="#52514e" text-anchor="start">capledger sla corroborate: provider agent vs the customer's own probe, same contract and month</text>
+<rect x="32.0" y="100.0" width="837.9" height="36.0" rx="6" fill="#2a78d6"/>
+<rect x="864.9" y="100.0" width="6.0" height="36.0" rx="0" fill="#2a78d6"/>
+<rect x="871.9" y="100.0" width="2.0" height="36.0" rx="0" fill="#eb6834"/>
+<rect x="875.9" y="100.0" width="52.1" height="36.0" rx="6" fill="#1baf7a"/>
+<rect x="875.9" y="100.0" width="6.0" height="36.0" rx="0" fill="#1baf7a"/>
+<text x="48.0" y="124.0" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="15" font-weight="650" fill="#ffffff" text-anchor="start">93.63% seen by both</text>
+<rect x="32.0" y="150.0" width="12.0" height="12.0" rx="3" fill="#2a78d6"/>
+<text x="50.0" y="161.0" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="13" font-weight="500" fill="#52514e" text-anchor="start">both: 127,580 s (93.63%)</text>
+<rect x="253.2" y="150.0" width="12.0" height="12.0" rx="3" fill="#eb6834"/>
+<text x="271.2" y="161.0" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="13" font-weight="500" fill="#52514e" text-anchor="start">only provider: 100 s (0.07%)</text>
+<rect x="503.6" y="150.0" width="12.0" height="12.0" rx="3" fill="#1baf7a"/>
+<text x="521.6" y="161.0" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="13" font-weight="500" fill="#52514e" text-anchor="start">only tenant: 8,580 s (6.30%)</text>
+<text x="32.0" y="210.0" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="16" font-weight="650" fill="#0b0b0b" text-anchor="start">The 5 nodes in dispute (seconds)</text>
+<text x="212.0" y="236.0" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="12" font-weight="500" fill="#898781" text-anchor="end">← only provider</text>
+<text x="228.0" y="236.0" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="12" font-weight="500" fill="#898781" text-anchor="start">only tenant →</text>
+<text x="32.0" y="266.0" font-family="ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace" font-size="13" font-weight="500" fill="#52514e" text-anchor="start">gpu-012</text>
+<path d="M221.0,252.0 H477.0 Q481.0,252.0 481.0,256.0 V268.0 Q481.0,272.0 477.0,272.0 H221.0 Z" fill="#1baf7a"/>
+<text x="489.0" y="267.0" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="13" font-weight="650" fill="#0b0b0b" text-anchor="start">5,400</text>
+<text x="537.0" y="267.0" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="13" font-weight="400" fill="#52514e" text-anchor="start">cause disputed: customer OOM vs 0/8 GPUs visible</text>
+<text x="32.0" y="306.0" font-family="ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace" font-size="13" font-weight="500" fill="#52514e" text-anchor="start">gpu-009</text>
+<path d="M221.0,292.0 H361.4 Q365.4,292.0 365.4,296.0 V308.0 Q365.4,312.0 361.4,312.0 H221.0 Z" fill="#1baf7a"/>
+<text x="373.4" y="307.0" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="13" font-weight="650" fill="#0b0b0b" text-anchor="start">3,000</text>
+<text x="421.4" y="307.0" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="13" font-weight="400" fill="#52514e" text-anchor="start">probe saw 6/8 GPUs; provider recorded nothing</text>
+<text x="32.0" y="346.0" font-family="ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace" font-size="13" font-weight="500" fill="#52514e" text-anchor="start">gpu-005</text>
+<path d="M221.0,332.0 H223.9 Q226.8,332.0 226.8,334.9 V349.1 Q226.8,352.0 223.9,352.0 H221.0 Z" fill="#1baf7a"/>
+<text x="234.8" y="347.0" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="13" font-weight="650" fill="#0b0b0b" text-anchor="start">120</text>
+<text x="267.6" y="347.0" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="13" font-weight="400" fill="#52514e" text-anchor="start">GPUs back 2 min after the provider closed the incident</text>
+<text x="32.0" y="386.0" font-family="ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace" font-size="13" font-weight="500" fill="#52514e" text-anchor="start">gpu-003</text>
+<path d="M219.0,372.0 H217.5 Q216.0,372.0 216.0,373.5 V390.5 Q216.0,392.0 217.5,392.0 H219.0 Z" fill="#eb6834"/>
+<text x="209.0" y="387.0" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="13" font-weight="650" fill="#0b0b0b" text-anchor="end">60</text>
+<path d="M221.0,372.0 H222.5 Q224.0,372.0 224.0,373.5 V390.5 Q224.0,392.0 222.5,392.0 H221.0 Z" fill="#1baf7a"/>
+<text x="232.0" y="387.0" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="13" font-weight="650" fill="#0b0b0b" text-anchor="start">60</text>
+<text x="257.2" y="387.0" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="13" font-weight="400" fill="#52514e" text-anchor="start">one-minute sampling at both ends</text>
+<text x="32.0" y="426.0" font-family="ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace" font-size="13" font-weight="500" fill="#52514e" text-anchor="start">gpu-016</text>
+<path d="M219.0,412.0 H217.5 Q216.0,412.0 216.0,413.5 V430.5 Q216.0,432.0 217.5,432.0 H219.0 Z" fill="#eb6834"/>
+<text x="209.0" y="427.0" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="13" font-weight="650" fill="#0b0b0b" text-anchor="end">40</text>
+<text x="230.0" y="427.0" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="13" font-weight="650" fill="#0b0b0b" text-anchor="start">0</text>
+<text x="247.6" y="427.0" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="13" font-weight="400" fill="#52514e" text-anchor="start">sampling edge</text>
+<line x1="220.0" y1="244.0" x2="220.0" y2="440.0" stroke="#c3c2b7" stroke-width="1"/>
+</svg>

@@ -1,0 +1,49 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="440" viewBox="0 0 960 440" role="img" aria-labelledby="t d">
+<title id="t">Finding 2 bad nodes without testing every pair</title>
+<desc id="d">Group tests needed to find 2 bad nodes vs all node pairs: 16 nodes 15 vs 120; 32 nodes 19 vs 496; 64 nodes 23 vs 2,016; 128 nodes 27 vs 8,128; 256 nodes 31 vs 32,640; 512 nodes 35 vs 130,816.</desc>
+<rect x="0.5" y="0.5" width="959.0" height="439.0" rx="12" fill="#1a1a19" stroke="#383835"/>
+<text x="32.0" y="44.0" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="20" font-weight="650" fill="#f0efec" text-anchor="start">Finding 2 bad nodes without testing every pair</text>
+<text x="32.0" y="70.0" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="14" font-weight="400" fill="#c3c2b7" text-anchor="start">capledger-harness localize-sim --bad 2: group tests needed vs testing all node pairs</text>
+<line x1="96.0" y1="376.0" x2="750.0" y2="376.0" stroke="#2c2c2a" stroke-width="1"/>
+<text x="86.0" y="380.0" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="12" font-weight="400" fill="#898781" text-anchor="end">10</text>
+<line x1="96.0" y1="324.8" x2="750.0" y2="324.8" stroke="#2c2c2a" stroke-width="1"/>
+<text x="86.0" y="328.8" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="12" font-weight="400" fill="#898781" text-anchor="end">100</text>
+<line x1="96.0" y1="273.6" x2="750.0" y2="273.6" stroke="#2c2c2a" stroke-width="1"/>
+<text x="86.0" y="277.6" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="12" font-weight="400" fill="#898781" text-anchor="end">1k</text>
+<line x1="96.0" y1="222.4" x2="750.0" y2="222.4" stroke="#2c2c2a" stroke-width="1"/>
+<text x="86.0" y="226.4" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="12" font-weight="400" fill="#898781" text-anchor="end">10k</text>
+<line x1="96.0" y1="171.2" x2="750.0" y2="171.2" stroke="#2c2c2a" stroke-width="1"/>
+<text x="86.0" y="175.2" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="12" font-weight="400" fill="#898781" text-anchor="end">100k</text>
+<line x1="96.0" y1="120.0" x2="750.0" y2="120.0" stroke="#2c2c2a" stroke-width="1"/>
+<text x="86.0" y="124.0" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="12" font-weight="400" fill="#898781" text-anchor="end">1M</text>
+<line x1="96.0" y1="376.0" x2="750.0" y2="376.0" stroke="#383835" stroke-width="1"/>
+<text x="96.0" y="398.0" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="12" font-weight="400" fill="#898781" text-anchor="middle">16</text>
+<text x="226.8" y="398.0" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="12" font-weight="400" fill="#898781" text-anchor="middle">32</text>
+<text x="357.6" y="398.0" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="12" font-weight="400" fill="#898781" text-anchor="middle">64</text>
+<text x="488.4" y="398.0" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="12" font-weight="400" fill="#898781" text-anchor="middle">128</text>
+<text x="619.2" y="398.0" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="12" font-weight="400" fill="#898781" text-anchor="middle">256</text>
+<text x="750.0" y="398.0" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="12" font-weight="400" fill="#898781" text-anchor="middle">512</text>
+<text x="423.0" y="420.0" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="13" font-weight="400" fill="#898781" text-anchor="middle">nodes in the cluster</text>
+<text x="32.0" y="104.0" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="12" font-weight="400" fill="#898781" text-anchor="start">tests (log scale)</text>
+<polyline points="96.0,320.7 226.8,289.2 357.6,258.0 488.4,227.0 619.2,196.1 750.0,165.2" fill="none" stroke="#d95926" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="96.0" cy="320.7" r="4.5" fill="#d95926" stroke="#1a1a19" stroke-width="2"/>
+<circle cx="226.8" cy="289.2" r="4.5" fill="#d95926" stroke="#1a1a19" stroke-width="2"/>
+<circle cx="357.6" cy="258.0" r="4.5" fill="#d95926" stroke="#1a1a19" stroke-width="2"/>
+<circle cx="488.4" cy="227.0" r="4.5" fill="#d95926" stroke="#1a1a19" stroke-width="2"/>
+<circle cx="619.2" cy="196.1" r="4.5" fill="#d95926" stroke="#1a1a19" stroke-width="2"/>
+<circle cx="750.0" cy="165.2" r="4.5" fill="#d95926" stroke="#1a1a19" stroke-width="2"/>
+<text x="764.0" y="161.2" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="14" font-weight="650" fill="#f0efec" text-anchor="start">all pairs</text>
+<text x="764.0" y="179.2" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="13" font-weight="400" fill="#c3c2b7" text-anchor="start">130,816 tests</text>
+<polyline points="96.0,367.0 226.8,361.7 357.6,357.5 488.4,353.9 619.2,350.8 750.0,348.1" fill="none" stroke="#3987e5" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="96.0" cy="367.0" r="4.5" fill="#3987e5" stroke="#1a1a19" stroke-width="2"/>
+<circle cx="226.8" cy="361.7" r="4.5" fill="#3987e5" stroke="#1a1a19" stroke-width="2"/>
+<circle cx="357.6" cy="357.5" r="4.5" fill="#3987e5" stroke="#1a1a19" stroke-width="2"/>
+<circle cx="488.4" cy="353.9" r="4.5" fill="#3987e5" stroke="#1a1a19" stroke-width="2"/>
+<circle cx="619.2" cy="350.8" r="4.5" fill="#3987e5" stroke="#1a1a19" stroke-width="2"/>
+<circle cx="750.0" cy="348.1" r="4.5" fill="#3987e5" stroke="#1a1a19" stroke-width="2"/>
+<text x="764.0" y="344.1" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="14" font-weight="650" fill="#f0efec" text-anchor="start">group testing</text>
+<text x="764.0" y="362.1" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="13" font-weight="400" fill="#c3c2b7" text-anchor="start">35 tests</text>
+<line x1="357.6" y1="266.0" x2="357.6" y2="349.5" stroke="#383835" stroke-width="1" stroke-dasharray="3 3"/>
+<text x="367.6" y="301.7" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="13" font-weight="650" fill="#f0efec" text-anchor="start">64 nodes:</text>
+<text x="367.6" y="319.7" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="13" font-weight="400" fill="#c3c2b7" text-anchor="start">23 tests instead of 2,016</text>
+</svg>

@@ -1,0 +1,63 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="590" viewBox="0 0 960 590" role="img" aria-labelledby="t d">
+<title id="t">One month, one sealed statement</title>
+<desc id="d">Availability 99.7021% falls in the 99.5–99.9% tier, so the credit is 5% of $300,000 = $15,000. Counted downtime: gpu-016 26 h, gpu-014 4 h, gpu-003 2.47 h, gpu-011 2 h, gpu-005 1 h. Excluded: gpu-010 3 h (announced firmware update), gpu-012 1.5 h (customer-caused).</desc>
+<rect x="0.5" y="0.5" width="959.0" height="589.0" rx="12" fill="#1a1a19" stroke="#383835"/>
+<text x="32.0" y="44.0" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="20" font-weight="650" fill="#f0efec" text-anchor="start">One month, one sealed statement</text>
+<text x="32.0" y="70.0" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="14" font-weight="400" fill="#c3c2b7" text-anchor="start">Example contract: 16 nodes, $300,000 a month, credit tiers below 99.9%, 99.5% and 99.0%</text>
+<rect x="32.0" y="128.0" width="148.3" height="40.0" rx="6" fill="#86b6ef"/>
+<text x="106.2" y="154.0" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="14" font-weight="600" fill="#0b0b0b" text-anchor="middle">25% credit</text>
+<rect x="182.3" y="128.0" width="371.3" height="40.0" rx="0" fill="#3987e5"/>
+<text x="368.0" y="154.0" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="14" font-weight="600" fill="#ffffff" text-anchor="middle">10% credit</text>
+<rect x="555.7" y="128.0" width="296.7" height="40.0" rx="0" fill="#256abf"/>
+<text x="630.6" y="154.0" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="14" font-weight="600" fill="#ffffff" text-anchor="middle">5% credit</text>
+<rect x="854.3" y="128.0" width="73.7" height="40.0" rx="6" fill="#184f95"/>
+<text x="891.2" y="154.0" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="14" font-weight="600" fill="#ffffff" text-anchor="middle">no credit</text>
+<line x1="181.3" y1="168.0" x2="181.3" y2="174.0" stroke="#383835" stroke-width="1"/>
+<text x="181.3" y="190.0" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="13" font-weight="400" fill="#898781" text-anchor="middle">99.0%</text>
+<line x1="554.7" y1="168.0" x2="554.7" y2="174.0" stroke="#383835" stroke-width="1"/>
+<text x="554.7" y="190.0" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="13" font-weight="400" fill="#898781" text-anchor="middle">99.5%</text>
+<line x1="853.3" y1="168.0" x2="853.3" y2="174.0" stroke="#383835" stroke-width="1"/>
+<text x="853.3" y="190.0" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="13" font-weight="400" fill="#898781" text-anchor="middle">99.9%</text>
+<line x1="928.0" y1="168.0" x2="928.0" y2="174.0" stroke="#383835" stroke-width="1"/>
+<text x="928.0" y="190.0" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="13" font-weight="400" fill="#898781" text-anchor="middle">100.0%</text>
+<text x="32.0" y="190.0" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="13" font-weight="400" fill="#898781" text-anchor="start">availability →</text>
+<line x1="705.6" y1="114.0" x2="705.6" y2="172.0" stroke="#f0efec" stroke-width="2"/>
+<circle cx="705.6" cy="114" r="5" fill="#f0efec"/>
+<text x="695.6" y="104.0" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="14" font-weight="650" fill="#f0efec" text-anchor="end">this month: 99.7021%  →  5% of $300,000 = $15,000</text>
+<text x="32.0" y="236.0" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="16" font-weight="650" fill="#f0efec" text-anchor="start">Where the downtime came from (hours)</text>
+<text x="928.0" y="236.0" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="13" font-weight="400" fill="#898781" text-anchor="end">9 other nodes: none</text>
+<text x="32.0" y="276.0" font-family="ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace" font-size="13" font-weight="500" fill="#c3c2b7" text-anchor="start">gpu-016</text>
+<path d="M120.0,262.0 H496.0 Q500.0,262.0 500.0,266.0 V278.0 Q500.0,282.0 496.0,282.0 H120.0 Z" fill="#3987e5"/>
+<text x="508.0" y="277.0" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="13" font-weight="650" fill="#f0efec" text-anchor="start">26 h</text>
+<text x="546.4" y="277.0" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="13" font-weight="400" fill="#c3c2b7" text-anchor="start">rail-3 link down</text>
+<text x="32.0" y="314.0" font-family="ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace" font-size="13" font-weight="500" fill="#c3c2b7" text-anchor="start">gpu-014</text>
+<path d="M120.0,300.0 H174.5 Q178.5,300.0 178.5,304.0 V316.0 Q178.5,320.0 174.5,320.0 H120.0 Z" fill="#3987e5"/>
+<text x="186.5" y="315.0" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="13" font-weight="650" fill="#f0efec" text-anchor="start">4 h</text>
+<text x="217.3" y="315.0" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="13" font-weight="400" fill="#c3c2b7" text-anchor="start">NCCL bus bandwidth below floor</text>
+<text x="32.0" y="352.0" font-family="ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace" font-size="13" font-weight="500" fill="#c3c2b7" text-anchor="start">gpu-003</text>
+<path d="M120.0,338.0 H152.1 Q156.1,338.0 156.1,342.0 V354.0 Q156.1,358.0 152.1,358.0 H120.0 Z" fill="#3987e5"/>
+<text x="164.1" y="353.0" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="13" font-weight="650" fill="#f0efec" text-anchor="start">2.47 h</text>
+<text x="217.7" y="353.0" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="13" font-weight="400" fill="#c3c2b7" text-anchor="start">XID 79, GPU fell off the bus</text>
+<text x="32.0" y="390.0" font-family="ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace" font-size="13" font-weight="500" fill="#c3c2b7" text-anchor="start">gpu-011</text>
+<path d="M120.0,376.0 H145.2 Q149.2,376.0 149.2,380.0 V392.0 Q149.2,396.0 145.2,396.0 H120.0 Z" fill="#3987e5"/>
+<text x="157.2" y="391.0" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="13" font-weight="650" fill="#f0efec" text-anchor="start">2 h</text>
+<text x="188.0" y="391.0" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="13" font-weight="400" fill="#c3c2b7" text-anchor="start">unannounced emergency patch</text>
+<text x="32.0" y="428.0" font-family="ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace" font-size="13" font-weight="500" fill="#c3c2b7" text-anchor="start">gpu-005</text>
+<path d="M120.0,414.0 H130.6 Q134.6,414.0 134.6,418.0 V430.0 Q134.6,434.0 130.6,434.0 H120.0 Z" fill="#3987e5"/>
+<text x="142.6" y="429.0" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="13" font-weight="650" fill="#f0efec" text-anchor="start">1 h</text>
+<text x="173.4" y="429.0" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="13" font-weight="400" fill="#c3c2b7" text-anchor="start">XID 48, carried over from September</text>
+<line x1="32.0" y1="452.0" x2="928.0" y2="452.0" stroke="#2c2c2a" stroke-width="1"/>
+<text x="32.0" y="444.0" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="1" font-weight="400" fill="#f0efec" text-anchor="start"></text>
+<text x="32.0" y="480.0" font-family="ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace" font-size="13" font-weight="500" fill="#c3c2b7" text-anchor="start">gpu-010</text>
+<path d="M120.0,466.0 H159.8 Q163.8,466.0 163.8,470.0 V482.0 Q163.8,486.0 159.8,486.0 H120.0 Z" fill="#52514e"/>
+<text x="171.8" y="481.0" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="13" font-weight="650" fill="#f0efec" text-anchor="start">3 h</text>
+<text x="202.6" y="481.0" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="13" font-weight="400" fill="#c3c2b7" text-anchor="start">excluded · firmware update, 4 days' notice</text>
+<text x="32.0" y="518.0" font-family="ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace" font-size="13" font-weight="500" fill="#c3c2b7" text-anchor="start">gpu-012</text>
+<path d="M120.0,504.0 H137.9 Q141.9,504.0 141.9,508.0 V520.0 Q141.9,524.0 137.9,524.0 H120.0 Z" fill="#52514e"/>
+<text x="149.9" y="519.0" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="13" font-weight="650" fill="#f0efec" text-anchor="start">1.5 h</text>
+<text x="195.9" y="519.0" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="13" font-weight="400" fill="#c3c2b7" text-anchor="start">excluded · customer-caused (OOM reboot)</text>
+<rect x="32.0" y="546.0" width="12.0" height="12.0" rx="3" fill="#3987e5"/>
+<text x="50.0" y="556.0" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="13" font-weight="400" fill="#c3c2b7" text-anchor="start">counts against the SLA</text>
+<rect x="232.0" y="546.0" width="12.0" height="12.0" rx="3" fill="#52514e"/>
+<text x="250.0" y="556.0" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="13" font-weight="400" fill="#c3c2b7" text-anchor="start">excluded by the contract (notice ≥ 72h, customer-caused)</text>
+</svg>
