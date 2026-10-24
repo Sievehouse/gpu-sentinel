@@ -13,8 +13,9 @@
 # let them enrol it from the log with "capledger keyring import --role tenant-probe".
 #
 # Compare with the provider at the end of the month:
-#   capledger events export --log probe-*.jsonl --keyring tenant-keyring.json --derive-gaps 5m --period 2026-10 > tenant.jsonl
-#   capledger sla corroborate --contract contract.yaml --events-a provider.jsonl --events-b tenant.jsonl --period 2026-10
+#   capledger events export --keyring tenant-keyring.json --log probe-gpu-001.jsonl --log probe-gpu-002.jsonl ... > tenant.jsonl
+#   capledger sla corroborate --contract contract.yaml --period 2026-10 \
+#     --events-a provider.jsonl --events-b maintenance-calendar.jsonl --events-b tenant.jsonl
 apiVersion: batch/v1
 kind: Job
 metadata:

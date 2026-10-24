@@ -6,8 +6,10 @@ Please do not open public issues for security problems. Email **ymohit799057@gma
 
 ## In scope
 
-- The `capledger` agent and anything that runs on GPU hosts.
+- The `capledger` agent, the tenant probe and anything else that runs on GPU hosts.
 - Evidence-log integrity: ways to alter, remove or forge entries without `evidence verify` noticing (other than the limits documented in `docs/evidence-format.md`).
+- Keyring enforcement: entries or bundles accepted for a node or a time that their key is not enrolled for.
+- Evidence bundles: ways to make `bundle verify` accept changed, added or removed files, or to make `--extract` write outside its directory.
 - SLA engine determinism: inputs that produce different statements on different machines.
 - Key handling.
 

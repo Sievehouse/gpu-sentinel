@@ -31,8 +31,8 @@ Pass thresholds: at least 95% recall for degradations of 10% or more, at least 8
 
 | Version | Scope |
 | --- | --- |
-| 0.1 (this) | SLA engine, evidence log, XID agent, Slurm watcher, acceptance harness, examples |
-| 0.2 | Heartbeats and gap detection; tenant-side probe; AMD collector (amd-smi, RAS events); signed acceptance-report bundles; engine reads YAML specs directly; per-node keys by default |
+| 0.1 | SLA engine, evidence log, XID agent, Slurm watcher, acceptance harness, examples |
+| 0.2 (this) | Heartbeats and gap detection; tenant-side probe and provider/tenant corroboration; AMD collector (amdgpu kernel messages, RAS counters) and AMD acceptance runs; signed evidence bundles; engine reads YAML specs directly; per-node keys by default, with a keyring of owners, roles and node bindings |
 | 0.3 | Hosted ledger service (PostgreSQL + object storage), provider, customer and financier roles, co-signed monthly statements, daily Merkle-root exchange |
 | 0.4 | Consented financier feed for SLA insurers and lenders; contract-level allow-lists of event sources |
 

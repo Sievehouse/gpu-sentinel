@@ -4,14 +4,28 @@
 
 | Stage | Tool | Catches | Typical verdict on failure |
 | --- | --- | --- | --- |
-| audit | `nvidia-smi`, `nvidia-smi topo -m`, `uname`, `ibstat` | Missing GPUs, driver mismatches, wrong topology | reject (missing GPUs) |
-| single_node | `dcgmi diag -r 3` | GPU memory, PCIe, NVLink and compute faults on one node | reject |
+| audit | `nvidia-smi`, `nvidia-smi topo -m`, `uname`, `ibstat` (AMD: amdgpu PCI functions, `amd-smi`) | Missing GPUs, driver mismatches, wrong topology | reject (missing GPUs) |
+| single_node | `dcgmi diag -r 3` (AMD: ROCm Validation Suite GPU stress test) | GPU memory, PCIe, NVLink and compute faults on one node | reject |
 | rdma | `ib_write_bw` per rail, neighbouring node pairs | Dead or slow rails, wrong RDMA configuration | review |
-| collectives | nccl-tests `all_reduce_perf`, `alltoall_perf` at 2, 4, 8 … nodes | Fabric and configuration problems that only appear at scale; wrong results | review (slow) or reject (wrong results) |
+| collectives | nccl-tests (AMD: rccl-tests) `all_reduce_perf`, `alltoall_perf` at 2, 4, 8 … nodes | Fabric and configuration problems that only appear at scale; wrong results | review (slow) or reject (wrong results) |
 | burn_in | `harness/scripts/burnin.py` | Thermal and electrical faults under combined GPU and fabric load; slow GPUs | review (via peer comparison) |
 | storage | `fio` sequential read and write | Misconfigured or slow shared storage | review |
 
-Run the kernel-log agent during every stage. XIDs that appear under load are often the most important result.
+Run the kernel-log agent during every stage. XIDs that appear under load are often the most important result. AMD Instinct clusters are covered in [AMD GPUs](amd-gpus.md).
+
+## Handing over the result
+
+The report is only as good as the trust in it. Pack the report, the plan, the raw results and the inventory into one signed bundle, so that every later reader can check that nothing was changed, added or removed:
+
+```bash
+capledger bundle create --out acceptance-example-hgx-32gpu.tar.gz --type acceptance \
+  --subject example-hgx-32gpu --key-dir keys/harness \
+  --file report.json --file report.md --file results.jsonl --file plan.json \
+  --file inventory.yaml=examples/inventory/hgx-4-node.yaml --log evidence.jsonl
+capledger bundle verify --bundle acceptance-example-hgx-32gpu.tar.gz --keyring keyring.json
+```
+
+The format and its checks are in [evidence formats](evidence-format.md#evidence-bundles).
 
 ## Why GPUs and fabric are stressed together
 

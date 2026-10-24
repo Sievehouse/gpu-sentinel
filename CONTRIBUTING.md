@@ -15,9 +15,10 @@ make test                      # gofmt check, go vet, Go tests, Python tests
 ## Ground rules
 
 - **No new dependencies in Go code** without discussion. The agent and engine are standard-library only so that counterparties can audit everything they run.
-- **Every change to the SLA engine** needs a test that pins the new behaviour, an updated worked example in `docs/sla-spec.md` if numbers change, and an `EngineVersion` bump if any existing statement would change.
+- **Every change to the SLA engine** needs a test that pins the new behaviour, an updated worked example in `docs/sla-spec.md` if numbers change, and an `EngineVersion` bump. Statements that do not use a new feature must stay byte-identical (the version 0.1 hashes are pinned in `internal/sla/engine_test.go`), and statements that do must record the new semantics, so that older binaries refuse them instead of disagreeing.
 - **No floating point** in anything that becomes availability, credits or money.
-- **XID policy changes** must cite the NVIDIA documentation they rely on in the pull request.
+- **Fault policy changes** must cite the vendor documentation they rely on in the pull request (NVIDIA's XID catalogue; the amdgpu kernel and ROCm documentation for AMD).
+- **Wire formats** (evidence entries, keyrings, bundles, contracts) only gain optional fields; anything else needs a new `apiVersion` or domain string.
 - Keep the agent read-only. Features that change host state belong elsewhere.
 
 ## Style
