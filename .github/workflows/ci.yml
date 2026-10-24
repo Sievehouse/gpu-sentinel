@@ -22,6 +22,13 @@ jobs:
         run: make vet
       - name: Test with the race detector
         run: go test -race ./...
+      - name: Fuzz the YAML reader and bundle verifier briefly
+        if: matrix.go == '1.24.x'
+        run: |
+          go test -run '^$' -fuzz FuzzUnmarshal -fuzztime 20s ./internal/yamlite
+          go test -run '^$' -fuzz FuzzVerify -fuzztime 20s ./internal/bundle
+      - name: Shell scripts parse
+        run: bash -n scripts/demo.sh deploy/slurm/slurm-state-watcher.sh deploy/slurm/tenant-probe.sbatch
       - name: End-to-end demo
         run: ./scripts/demo.sh
 
@@ -39,5 +46,5 @@ jobs:
         run: pip install -e "harness[dev]"
       - name: Test
         run: cd harness && pytest -q
-      - name: Burn-in script compiles
-        run: python -m py_compile harness/scripts/burnin.py
+      - name: GPU scripts compile
+        run: python -m py_compile harness/scripts/burnin.py harness/scripts/gemm_bench.py
