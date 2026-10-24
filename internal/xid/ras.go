@@ -2,6 +2,7 @@ package xid
 
 import (
 	"bufio"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -28,6 +29,8 @@ func (c RASCounter) key() string { return c.Device + "/" + c.Block }
 
 // ReadRASCounters reads every amdgpu RAS counter under sysRoot (normally
 // "/sys"). Hosts without amdgpu RAS support return no counters, not an error.
+// A counter that cannot be read is skipped and reported in the error, and
+// the others are still returned, so one odd file cannot blind the agent.
 func ReadRASCounters(sysRoot string) ([]RASCounter, error) {
 	files, err := filepath.Glob(filepath.Join(sysRoot, "class", "drm", "card*", "device", "ras", "*_err_count"))
 	if err != nil {
@@ -35,6 +38,7 @@ func ReadRASCounters(sysRoot string) ([]RASCounter, error) {
 	}
 	seen := map[string]bool{}
 	var out []RASCounter
+	var errs []error
 	for _, f := range files {
 		cardDir := filepath.Dir(filepath.Dir(filepath.Dir(f)))
 		card := filepath.Base(cardDir)
@@ -48,13 +52,14 @@ func ReadRASCounters(sysRoot string) ([]RASCounter, error) {
 			continue
 		}
 		if err := readUECE(f, &c); err != nil {
-			return nil, err
+			errs = append(errs, err)
+			continue
 		}
 		seen[c.key()] = true
 		out = append(out, c)
 	}
 	sort.Slice(out, func(i, j int) bool { return out[i].key() < out[j].key() })
-	return out, nil
+	return out, errors.Join(errs...)
 }
 
 func readUECE(path string, c *RASCounter) error {

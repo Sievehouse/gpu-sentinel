@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"reflect"
 	"runtime"
+	"strings"
 	"testing"
 )
 
@@ -100,6 +101,12 @@ func TestRASCountersAndTracker(t *testing.T) {
 	third, _ := ReadRASCounters(root)
 	if obs := tr.Update(third); len(obs) != 0 {
 		t.Fatalf("reset counter reported: %+v", obs)
+	}
+	// One unreadable counter does not hide the others.
+	fakeRAS(t, root, "card2", "0000:65:00.0", "sdma", "garbage\n")
+	partial, err := ReadRASCounters(root)
+	if err == nil || !strings.Contains(err.Error(), "sdma_err_count") || len(partial) != 3 {
+		t.Fatalf("partial read: %d counters, err %v", len(partial), err)
 	}
 	// No amdgpu RAS support: no counters, no error.
 	if none, err := ReadRASCounters(t.TempDir()); err != nil || len(none) != 0 {

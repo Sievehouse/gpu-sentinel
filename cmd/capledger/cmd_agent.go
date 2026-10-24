@@ -85,8 +85,7 @@ func cmdAgent(args []string, s streams) error {
 			go every(ctx, *rasEvery, func() {
 				readings, err := xid.ReadRASCounters(*sysRoot)
 				if err != nil {
-					fmt.Fprintf(s.err, "reading RAS counters failed: %v\n", err)
-					return
+					fmt.Fprintf(s.err, "reading RAS counters: %v\n", err)
 				}
 				if err := a.HandleRAS(readings); err != nil {
 					fmt.Fprintf(s.err, "recording RAS counters failed: %v\n", err)
