@@ -1,0 +1,22 @@
+# The customer's view of October 2026 for examples/contracts/hgx-16-node.json, recorded by
+# "capledger probe" on the tenant side, plus the provider's maintenance calendar (which both
+# sides need). Compare with the provider's view using "capledger sla corroborate".
+{"id":"e-0007","ts":"2026-10-14T02:00:00Z","node":"gpu-010","type":"maintenance_start","noticeTs":"2026-10-10T00:00:00Z","cause":"firmware-update","source":"provider-change-calendar"}
+{"id":"e-0008","ts":"2026-10-14T05:00:00Z","node":"gpu-010","type":"maintenance_end","source":"provider-change-calendar"}
+{"id":"e-0009","ts":"2026-10-20T01:00:00Z","node":"gpu-011","type":"maintenance_start","noticeTs":"2026-10-19T20:00:00Z","cause":"emergency-patch","source":"provider-change-calendar"}
+{"id":"e-0010","ts":"2026-10-20T03:00:00Z","node":"gpu-011","type":"maintenance_end","source":"provider-change-calendar"}
+{"id":"t-0001","ts":"2026-09-30T23:01:00Z","node":"gpu-005","type":"down","cause":"tenant:gpu-missing:7/8","source":"tenant-probe"}
+{"id":"t-0002","ts":"2026-10-01T01:02:00Z","node":"gpu-005","type":"up","cause":"tenant:gpus-visible","source":"tenant-probe"}
+{"id":"t-0003","ts":"2026-10-03T04:13:00Z","node":"gpu-003","type":"down","cause":"tenant:gpu-missing:7/8","source":"tenant-probe"}
+{"id":"t-0004","ts":"2026-10-03T06:41:00Z","node":"gpu-003","type":"up","cause":"tenant:gpus-visible","source":"tenant-probe"}
+{"id":"t-0005","ts":"2026-10-14T02:00:30Z","node":"gpu-010","type":"down","cause":"tenant:probe-error","source":"tenant-probe"}
+{"id":"t-0006","ts":"2026-10-14T05:00:30Z","node":"gpu-010","type":"up","cause":"tenant:gpus-visible","source":"tenant-probe"}
+{"id":"t-0007","ts":"2026-10-18T07:00:00Z","node":"gpu-009","type":"down","cause":"tenant:gpu-missing:6/8","source":"tenant-probe"}
+{"id":"t-0008","ts":"2026-10-18T07:50:00Z","node":"gpu-009","type":"up","cause":"tenant:gpus-visible","source":"tenant-probe"}
+{"id":"t-0009","ts":"2026-10-20T01:00:00Z","node":"gpu-011","type":"down","cause":"tenant:probe-error","source":"tenant-probe"}
+{"id":"t-0010","ts":"2026-10-20T03:00:00Z","node":"gpu-011","type":"up","cause":"tenant:gpus-visible","source":"tenant-probe"}
+{"id":"t-0011","ts":"2026-10-22T08:00:00Z","node":"gpu-012","type":"down","cause":"tenant:gpu-missing:0/8","source":"tenant-probe"}
+{"id":"t-0012","ts":"2026-10-22T09:30:00Z","node":"gpu-012","type":"up","cause":"tenant:gpus-visible","source":"tenant-probe"}
+{"id":"t-0013","ts":"2026-10-25T12:00:00Z","node":"gpu-014","type":"degraded_start","cause":"tenant:bench-below-floor:331<340","source":"tenant-probe"}
+{"id":"t-0014","ts":"2026-10-25T16:00:00Z","node":"gpu-014","type":"degraded_end","cause":"tenant:bench-recovered","source":"tenant-probe"}
+{"id":"t-0015","ts":"2026-10-30T22:00:40Z","node":"gpu-016","type":"down","cause":"tenant:probe-error","source":"tenant-probe"}
