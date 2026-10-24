@@ -174,3 +174,39 @@ func TestFromPublicKeyFiles(t *testing.T) {
 	}
 	_ = os.Remove(pubPath)
 }
+
+func TestEntryCheckEnforcesNodeBindings(t *testing.T) {
+	dir := t.TempDir()
+	priv, _, err := evidence.LoadOrCreateKey(filepath.Join(dir, "keys"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	logPath := filepath.Join(dir, "evidence.jsonl")
+	w, _ := evidence.OpenWriter(logPath, priv)
+	w.Announce("gpu-003", RoleProviderAgent, "test")
+	w.Append(evidence.KindHeartbeat, map[string]any{"node": "gpu-003", "ts": "2026-10-03T04:00:00Z", "intervalSeconds": 60})
+	w.Append(evidence.KindStatement, map[string]any{"node": "not-a-node-entry"})
+	w.Append(evidence.KindEvent, map[string]any{"node": "gpu-004"})
+
+	entries, _ := evidence.ReadFile(logPath)
+	found, _ := FindAnnouncements(entries)
+	k := New()
+	if err := k.Add(Entry{PublicKey: found[0].Announcement.PublicKey, Owner: "Example Neocloud", Role: RoleProviderAgent, Nodes: []string{"gpu-003"}}); err != nil {
+		t.Fatal(err)
+	}
+	rep := evidence.VerifyFileWith(logPath, k.PublicKeys(), k.EntryCheck())
+	// Only the event for gpu-004 breaks the binding; statements are not
+	// about a single node.
+	if rep.OK || len(rep.Problems) != 1 || !strings.Contains(rep.Problems[0], "seq 4") || !strings.Contains(rep.Problems[0], "for node gpu-004") {
+		t.Fatalf("problems %v", rep.Problems)
+	}
+	if n, err := PayloadNode(entries[1]); err != nil || n != "gpu-003" {
+		t.Fatalf("PayloadNode = %q, %v", n, err)
+	}
+	if e, err := k.KeyAt(entries[0].KeyID, time.Now()); err != nil || e.Public() == nil {
+		t.Fatalf("KeyAt: %v", err)
+	}
+	if _, err := k.KeyAt("0000000000000000", time.Now()); err == nil {
+		t.Fatal("unknown key accepted")
+	}
+}

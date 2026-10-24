@@ -18,6 +18,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"sort"
+	"strings"
 	"time"
 
 	"github.com/Sievehouse/capacity-ledger/internal/evidence"
@@ -232,7 +233,10 @@ func (e *Entry) CheckTime(t time.Time) error {
 // nodes may speak for any node.
 func (e *Entry) AllowsNode(node string) bool { return len(e.nodes) == 0 || e.nodes[node] }
 
-// EntryCheck returns an evidence.EntryCheck enforcing validity windows.
+// EntryCheck returns an evidence.EntryCheck that enforces the keyring's
+// rules on every correctly signed entry: the key's validity window at the
+// entry's time and, for entries about one node (events, heartbeats,
+// observations and key announcements), the key's node bindings.
 func (k *Keyring) EntryCheck() evidence.EntryCheck {
 	return func(en evidence.Entry) error {
 		e, ok := k.Lookup(en.KeyID)
@@ -243,8 +247,35 @@ func (k *Keyring) EntryCheck() evidence.EntryCheck {
 		if err != nil {
 			return fmt.Errorf("bad entry timestamp %q", en.TS)
 		}
-		return e.CheckTime(t)
+		if err := e.CheckTime(t); err != nil {
+			return err
+		}
+		node, err := PayloadNode(en)
+		if err != nil {
+			return err
+		}
+		if node != "" && !e.AllowsNode(node) {
+			return fmt.Errorf("key %s (%s, %s) may speak only for %s but signed a %s entry for node %s", e.KeyID, e.Owner, e.Role, strings.Join(e.Nodes, ", "), en.Kind, node)
+		}
+		return nil
 	}
+}
+
+// PayloadNode returns the node an entry is about, or "" for entries that are
+// not about a single node (statements, bundles, other kinds).
+func PayloadNode(en evidence.Entry) (string, error) {
+	switch en.Kind {
+	case evidence.KindEvent, evidence.KindHeartbeat, evidence.KindObservation, evidence.KindKey:
+	default:
+		return "", nil
+	}
+	var p struct {
+		Node string `json:"node"`
+	}
+	if err := en.DecodePayload(&p); err != nil {
+		return "", fmt.Errorf("%s entry: %w", en.Kind, err)
+	}
+	return p.Node, nil
 }
 
 // CheckNode returns an error if the key that signed en may not speak for node.
