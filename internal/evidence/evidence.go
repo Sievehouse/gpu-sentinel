@@ -1,4 +1,4 @@
-// Package evidence implements a tamper-evident, append-only evidence log.
+﻿// Package evidence implements a tamper-evident, append-only evidence log.
 //
 // Every entry is one JSON line holding a canonicalised payload, the hash of
 // the previous entry, and an Ed25519 signature over its own hash. Editing,
@@ -25,7 +25,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Sievehouse/capacity-ledger/internal/canonical"
+	"github.com/Sievehouse/gpu-sentinel/internal/canonical"
 )
 
 const hashDomain = "capacity-ledger/evidence/v1\n"

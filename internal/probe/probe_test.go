@@ -1,4 +1,4 @@
-package probe
+﻿package probe
 
 import (
 	"context"
@@ -12,9 +12,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Sievehouse/capacity-ledger/internal/events"
-	"github.com/Sievehouse/capacity-ledger/internal/evidence"
-	"github.com/Sievehouse/capacity-ledger/internal/gaps"
+	"github.com/Sievehouse/gpu-sentinel/internal/events"
+	"github.com/Sievehouse/gpu-sentinel/internal/evidence"
+	"github.com/Sievehouse/gpu-sentinel/internal/gaps"
 )
 
 const eightGPUs = `0, 00000000:18:00.0, 41, 118.52, 1980

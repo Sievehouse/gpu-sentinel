@@ -1,4 +1,4 @@
-package sla
+﻿package sla
 
 import (
 	"bytes"
@@ -7,7 +7,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/Sievehouse/capacity-ledger/internal/canonical"
+	"github.com/Sievehouse/gpu-sentinel/internal/canonical"
 )
 
 // Statement is the output of one SLA computation. It is sealed with a

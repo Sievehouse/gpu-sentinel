@@ -1,4 +1,4 @@
-package main
+﻿package main
 
 import (
 	"crypto/ed25519"
@@ -9,9 +9,9 @@ import (
 	"text/tabwriter"
 	"time"
 
-	"github.com/Sievehouse/capacity-ledger/internal/bundle"
-	"github.com/Sievehouse/capacity-ledger/internal/evidence"
-	"github.com/Sievehouse/capacity-ledger/internal/keyring"
+	"github.com/Sievehouse/gpu-sentinel/internal/bundle"
+	"github.com/Sievehouse/gpu-sentinel/internal/evidence"
+	"github.com/Sievehouse/gpu-sentinel/internal/keyring"
 )
 
 func cmdBundleCreate(args []string, s streams) error {

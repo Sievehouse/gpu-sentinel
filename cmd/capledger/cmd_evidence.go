@@ -1,4 +1,4 @@
-package main
+﻿package main
 
 import (
 	"bytes"
@@ -9,11 +9,11 @@ import (
 	"text/tabwriter"
 	"time"
 
-	"github.com/Sievehouse/capacity-ledger/internal/contract"
-	"github.com/Sievehouse/capacity-ledger/internal/events"
-	"github.com/Sievehouse/capacity-ledger/internal/evidence"
-	"github.com/Sievehouse/capacity-ledger/internal/gaps"
-	"github.com/Sievehouse/capacity-ledger/internal/keyring"
+	"github.com/Sievehouse/gpu-sentinel/internal/contract"
+	"github.com/Sievehouse/gpu-sentinel/internal/events"
+	"github.com/Sievehouse/gpu-sentinel/internal/evidence"
+	"github.com/Sievehouse/gpu-sentinel/internal/gaps"
+	"github.com/Sievehouse/gpu-sentinel/internal/keyring"
 )
 
 func cmdEventEmit(args []string, s streams) error {

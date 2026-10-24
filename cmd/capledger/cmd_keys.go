@@ -1,4 +1,4 @@
-package main
+﻿package main
 
 import (
 	"crypto/ed25519"
@@ -7,8 +7,8 @@ import (
 	"strings"
 	"text/tabwriter"
 
-	"github.com/Sievehouse/capacity-ledger/internal/evidence"
-	"github.com/Sievehouse/capacity-ledger/internal/keyring"
+	"github.com/Sievehouse/gpu-sentinel/internal/evidence"
+	"github.com/Sievehouse/gpu-sentinel/internal/keyring"
 )
 
 // defaultAgentKeyDir holds the agent's per-node key when --key is not given.

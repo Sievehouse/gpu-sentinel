@@ -1,4 +1,4 @@
-package agent
+﻿package agent
 
 import (
 	"context"
@@ -9,10 +9,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Sievehouse/capacity-ledger/internal/events"
-	"github.com/Sievehouse/capacity-ledger/internal/evidence"
-	"github.com/Sievehouse/capacity-ledger/internal/gaps"
-	"github.com/Sievehouse/capacity-ledger/internal/xid"
+	"github.com/Sievehouse/gpu-sentinel/internal/events"
+	"github.com/Sievehouse/gpu-sentinel/internal/evidence"
+	"github.com/Sievehouse/gpu-sentinel/internal/gaps"
+	"github.com/Sievehouse/gpu-sentinel/internal/xid"
 )
 
 func setup(t *testing.T) (*Agent, string, map[string]ed25519.PublicKey) {

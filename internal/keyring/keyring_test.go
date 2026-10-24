@@ -1,4 +1,4 @@
-package keyring
+﻿package keyring
 
 import (
 	"crypto/ed25519"
@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Sievehouse/capacity-ledger/internal/evidence"
+	"github.com/Sievehouse/gpu-sentinel/internal/evidence"
 )
 
 func newKey(t *testing.T) (ed25519.PrivateKey, string) {

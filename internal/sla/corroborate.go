@@ -1,14 +1,14 @@
-package sla
+﻿package sla
 
 import (
 	"fmt"
 	"math/big"
 	"strings"
 
-	"github.com/Sievehouse/capacity-ledger/internal/canonical"
-	"github.com/Sievehouse/capacity-ledger/internal/contract"
-	"github.com/Sievehouse/capacity-ledger/internal/events"
-	"github.com/Sievehouse/capacity-ledger/internal/interval"
+	"github.com/Sievehouse/gpu-sentinel/internal/canonical"
+	"github.com/Sievehouse/gpu-sentinel/internal/contract"
+	"github.com/Sievehouse/gpu-sentinel/internal/events"
+	"github.com/Sievehouse/gpu-sentinel/internal/interval"
 )
 
 // CorroborationKind identifies a corroboration report.

@@ -1,4 +1,4 @@
-package main
+﻿package main
 
 import (
 	"context"
@@ -9,8 +9,8 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/Sievehouse/capacity-ledger/internal/keyring"
-	"github.com/Sievehouse/capacity-ledger/internal/probe"
+	"github.com/Sievehouse/gpu-sentinel/internal/keyring"
+	"github.com/Sievehouse/gpu-sentinel/internal/probe"
 )
 
 func cmdProbe(args []string, s streams) error {

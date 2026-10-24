@@ -1,11 +1,11 @@
-# Tenant side: run "capledger probe" next to your own workload, so that you
+﻿# Tenant side: run "capledger probe" next to your own workload, so that you
 # keep your own signed record of when your GPUs were usable.
 #
 # The probe must see the same GPUs as the workload. In Kubernetes the device
 # plugin gives GPUs to one container, so the probe runs inside the workload's
 # container, started in the background before the main process. Copy the
 # capledger binary into your image (it is one static file):
-#   COPY --from=ghcr.io/sievehouse/capacity-ledger-agent:0.2.0 /usr/local/bin/capledger /usr/local/bin/capledger
+#   COPY --from=ghcr.io/Sievehouse/gpu-sentinel-agent:0.2.0 /usr/local/bin/capledger /usr/local/bin/capledger
 #
 # Keep the evidence on storage you control and copy it off the cluster
 # regularly. The probe's key is created on first start; give its public key

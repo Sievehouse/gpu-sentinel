@@ -1,4 +1,4 @@
-// Package bundle packs evidence files (an acceptance report and its raw
+﻿// Package bundle packs evidence files (an acceptance report and its raw
 // results, a monthly statement with its inputs) into one signed .tar.gz that
 // anyone holding the signer's public key can check offline.
 //
@@ -35,8 +35,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Sievehouse/capacity-ledger/internal/canonical"
-	"github.com/Sievehouse/capacity-ledger/internal/evidence"
+	"github.com/Sievehouse/gpu-sentinel/internal/canonical"
+	"github.com/Sievehouse/gpu-sentinel/internal/evidence"
 )
 
 // Identifiers and layout.

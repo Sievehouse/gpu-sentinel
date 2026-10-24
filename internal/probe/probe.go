@@ -1,4 +1,4 @@
-// Package probe is the tenant-side vantage point. It runs where the
+﻿// Package probe is the tenant-side vantage point. It runs where the
 // customer's jobs run, checks that every rented GPU is visible and,
 // optionally, that a short benchmark stays above an agreed floor, and writes
 // signed heartbeats, observations and availability events to the tenant's
@@ -23,10 +23,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/Sievehouse/capacity-ledger/internal/events"
-	"github.com/Sievehouse/capacity-ledger/internal/evidence"
-	"github.com/Sievehouse/capacity-ledger/internal/gaps"
-	"github.com/Sievehouse/capacity-ledger/internal/xid"
+	"github.com/Sievehouse/gpu-sentinel/internal/events"
+	"github.com/Sievehouse/gpu-sentinel/internal/evidence"
+	"github.com/Sievehouse/gpu-sentinel/internal/gaps"
+	"github.com/Sievehouse/gpu-sentinel/internal/xid"
 )
 
 // Runner runs a command and returns its standard output.

@@ -1,4 +1,4 @@
-# Capacity Ledger agent: one pod per GPU node, read-only towards the host.
+﻿# Capacity Ledger agent: one pod per GPU node, read-only towards the host.
 #
 # By default it tails /var/log/kern.log (Ubuntu/Debian with rsyslog), which
 # needs no privileges beyond membership of the "adm" group (gid 4). For hosts
@@ -68,7 +68,7 @@ spec:
             - { name: state, mountPath: /var/lib/capledger }
       containers:
         - name: agent
-          image: ghcr.io/sievehouse/capacity-ledger-agent:0.2.0   # build with deploy/docker/Dockerfile.agent
+          image: ghcr.io/Sievehouse/gpu-sentinel-agent:0.2.0   # build with deploy/docker/Dockerfile.agent
           args:
             - agent
             - --node=$(NODE_NAME)

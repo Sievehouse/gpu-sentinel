@@ -1,4 +1,4 @@
-// Package gaps finds stretches with no heartbeat in evidence logs and turns
+﻿// Package gaps finds stretches with no heartbeat in evidence logs and turns
 // them into unmonitored_start / unmonitored_end events for the SLA engine.
 //
 // A node that stops sending heartbeats is not necessarily down: the agent may
@@ -13,8 +13,8 @@ import (
 	"sort"
 	"time"
 
-	"github.com/Sievehouse/capacity-ledger/internal/events"
-	"github.com/Sievehouse/capacity-ledger/internal/evidence"
+	"github.com/Sievehouse/gpu-sentinel/internal/events"
+	"github.com/Sievehouse/gpu-sentinel/internal/evidence"
 )
 
 // Heartbeat is the payload of an evidence.KindHeartbeat entry.

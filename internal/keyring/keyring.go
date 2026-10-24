@@ -1,4 +1,4 @@
-// Package keyring records which signing keys a verifier trusts, who holds
+﻿// Package keyring records which signing keys a verifier trusts, who holds
 // them, what role they play and which nodes they may speak for.
 //
 // A key announcement in an evidence log proves only that someone holds the
@@ -21,7 +21,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Sievehouse/capacity-ledger/internal/evidence"
+	"github.com/Sievehouse/gpu-sentinel/internal/evidence"
 )
 
 // APIVersion and Kind identify a keyring document.

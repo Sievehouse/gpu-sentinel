@@ -1,4 +1,4 @@
-// Package sla turns availability events into a sealed SLA statement.
+﻿// Package sla turns availability events into a sealed SLA statement.
 //
 // The computation is deterministic: the same contract, events and period
 // always produce byte-identical canonical output and the same statement hash.
@@ -29,9 +29,9 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/Sievehouse/capacity-ledger/internal/contract"
-	"github.com/Sievehouse/capacity-ledger/internal/events"
-	"github.com/Sievehouse/capacity-ledger/internal/interval"
+	"github.com/Sievehouse/gpu-sentinel/internal/contract"
+	"github.com/Sievehouse/gpu-sentinel/internal/events"
+	"github.com/Sievehouse/gpu-sentinel/internal/interval"
 )
 
 // EngineVersion is the version of this engine. Bump it whenever the

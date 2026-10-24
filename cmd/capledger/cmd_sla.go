@@ -1,4 +1,4 @@
-package main
+﻿package main
 
 import (
 	"encoding/json"
@@ -6,8 +6,8 @@ import (
 	"io"
 	"os"
 
-	"github.com/Sievehouse/capacity-ledger/internal/contract"
-	"github.com/Sievehouse/capacity-ledger/internal/sla"
+	"github.com/Sievehouse/gpu-sentinel/internal/contract"
+	"github.com/Sievehouse/gpu-sentinel/internal/sla"
 )
 
 func cmdSLACompute(args []string, s streams) error {

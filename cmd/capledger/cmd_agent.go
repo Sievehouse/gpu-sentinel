@@ -1,4 +1,4 @@
-package main
+﻿package main
 
 import (
 	"context"
@@ -13,9 +13,9 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/Sievehouse/capacity-ledger/internal/agent"
-	"github.com/Sievehouse/capacity-ledger/internal/keyring"
-	"github.com/Sievehouse/capacity-ledger/internal/xid"
+	"github.com/Sievehouse/gpu-sentinel/internal/agent"
+	"github.com/Sievehouse/gpu-sentinel/internal/keyring"
+	"github.com/Sievehouse/gpu-sentinel/internal/xid"
 )
 
 func cmdAgent(args []string, s streams) error {

@@ -1,4 +1,4 @@
-// Command capledger is the Capacity Ledger command-line tool: the provider
+﻿// Command capledger is the Capacity Ledger command-line tool: the provider
 // agent, the tenant probe, the SLA engine, evidence logs, keyrings and
 // signed evidence bundles in one static binary.
 package main
@@ -14,8 +14,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Sievehouse/capacity-ledger/internal/events"
-	"github.com/Sievehouse/capacity-ledger/internal/sla"
+	"github.com/Sievehouse/gpu-sentinel/internal/events"
+	"github.com/Sievehouse/gpu-sentinel/internal/sla"
 )
 
 // version is overridden at build time with -ldflags "-X main.version=...".

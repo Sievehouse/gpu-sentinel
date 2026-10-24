@@ -1,10 +1,10 @@
-package gaps
+﻿package gaps
 
 import (
 	"reflect"
 	"testing"
 
-	"github.com/Sievehouse/capacity-ledger/internal/events"
+	"github.com/Sievehouse/gpu-sentinel/internal/events"
 )
 
 const t0 = 1790812800 // 2026-10-01T00:00:00Z

@@ -1,4 +1,4 @@
-// Package contract loads and validates the machine-readable SLA terms of a
+﻿// Package contract loads and validates the machine-readable SLA terms of a
 // GPU capacity contract.
 //
 // The spec is deliberately small. It captures what the engine needs to turn
@@ -22,8 +22,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Sievehouse/capacity-ledger/internal/canonical"
-	"github.com/Sievehouse/capacity-ledger/internal/yamlite"
+	"github.com/Sievehouse/gpu-sentinel/internal/canonical"
+	"github.com/Sievehouse/gpu-sentinel/internal/yamlite"
 )
 
 // APIVersion and Kind identify a contract spec document.

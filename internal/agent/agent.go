@@ -1,4 +1,4 @@
-// Package agent is the in-cluster collector. It reads kernel log lines,
+﻿// Package agent is the in-cluster collector. It reads kernel log lines,
 // recognises NVIDIA XID and SXID messages, records every one as a signed
 // observation and turns node-level faults into SLA down events.
 //
@@ -20,10 +20,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/Sievehouse/capacity-ledger/internal/events"
-	"github.com/Sievehouse/capacity-ledger/internal/evidence"
-	"github.com/Sievehouse/capacity-ledger/internal/gaps"
-	"github.com/Sievehouse/capacity-ledger/internal/xid"
+	"github.com/Sievehouse/gpu-sentinel/internal/events"
+	"github.com/Sievehouse/gpu-sentinel/internal/evidence"
+	"github.com/Sievehouse/gpu-sentinel/internal/gaps"
+	"github.com/Sievehouse/gpu-sentinel/internal/xid"
 )
 
 // Config configures an Agent.

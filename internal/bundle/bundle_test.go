@@ -1,4 +1,4 @@
-package bundle
+﻿package bundle
 
 import (
 	"archive/tar"
@@ -14,7 +14,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Sievehouse/capacity-ledger/internal/evidence"
+	"github.com/Sievehouse/gpu-sentinel/internal/evidence"
 )
 
 var created = time.Date(2026, 10, 7, 12, 0, 0, 0, time.UTC)
