@@ -1,6 +1,8 @@
 package contract
 
 import (
+	"bytes"
+	"os"
 	"strings"
 	"testing"
 )
@@ -17,6 +19,41 @@ func TestExampleContractsLoad(t *testing.T) {
 		if _, err := spec.Digest(); err != nil {
 			t.Fatal(err)
 		}
+	}
+}
+
+// The YAML authoring file and its JSON twin must be the same contract, down
+// to the digest that statements fingerprint.
+func TestYAMLAndJSONExamplesAreIdentical(t *testing.T) {
+	j, err := Load("../../examples/contracts/hgx-16-node.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	y, err := Load("../../examples/contracts/hgx-16-node.yaml")
+	if err != nil {
+		t.Fatal(err)
+	}
+	dj, _ := j.Digest()
+	dy, _ := y.Digest()
+	if dj != dy {
+		t.Fatalf("digests differ: json %s, yaml %s", dj, dy)
+	}
+	// Sniffing without an extension also works.
+	b, _ := os.ReadFile("../../examples/contracts/hgx-16-node.yaml")
+	s, err := Read(bytes.NewReader(b))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if d, _ := s.Digest(); d != dj {
+		t.Fatal("sniffed YAML gives a different digest")
+	}
+}
+
+func TestYAMLErrorsCarryLineNumbers(t *testing.T) {
+	src := "apiVersion: capacity-ledger/v1alpha1\nkind: ContractSLA\nmetadata: {id: x, version: 1}\ncluster:\n  gpusPerNode: eight\n"
+	_, err := Decode([]byte(src), "yaml")
+	if err == nil || !strings.Contains(err.Error(), "line 5: cluster.gpusPerNode: expected a whole number") {
+		t.Fatalf("got %v", err)
 	}
 }
 

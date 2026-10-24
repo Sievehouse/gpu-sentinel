@@ -9,18 +9,21 @@
 package contract
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"math/big"
 	"os"
+	"path/filepath"
 	"regexp"
 	"sort"
 	"strings"
 	"time"
 
 	"github.com/Sievehouse/capacity-ledger/internal/canonical"
+	"github.com/Sievehouse/capacity-ledger/internal/yamlite"
 )
 
 // APIVersion and Kind identify a contract spec document.
@@ -151,27 +154,62 @@ func (s *Spec) SortedNodes() []string {
 // Digest returns the SHA-256 of the canonical encoding of the contract.
 func (s *Spec) Digest() (string, error) { return canonical.SHA256Hex(s.Contract) }
 
-// Load reads and validates a contract spec from a JSON file.
+// Load reads and validates a contract spec from a JSON or YAML file. Files
+// ending in .yaml or .yml are read as YAML; anything else is sniffed.
 func Load(path string) (*Spec, error) {
-	f, err := os.Open(path)
+	b, err := os.ReadFile(path)
 	if err != nil {
 		return nil, err
 	}
-	defer f.Close()
-	spec, err := Read(f)
+	format := ""
+	switch strings.ToLower(filepath.Ext(path)) {
+	case ".yaml", ".yml":
+		format = "yaml"
+	case ".json":
+		format = "json"
+	}
+	spec, err := Decode(b, format)
 	if err != nil {
 		return nil, fmt.Errorf("%s: %w", path, err)
 	}
 	return spec, nil
 }
 
-// Read decodes and validates a contract spec. Unknown fields are rejected.
+// Read decodes and validates a contract spec in JSON or YAML.
 func Read(r io.Reader) (*Spec, error) {
-	dec := json.NewDecoder(r)
-	dec.DisallowUnknownFields()
-	var c Contract
-	if err := dec.Decode(&c); err != nil {
+	b, err := io.ReadAll(r)
+	if err != nil {
 		return nil, err
+	}
+	return Decode(b, "")
+}
+
+// Decode parses a contract spec. format is "json", "yaml" or "" to sniff:
+// a document whose first non-blank character is '{' is JSON. Unknown fields
+// are rejected in both formats, and both produce the same Contract value,
+// so a YAML spec and its JSON twin have the same digest.
+func Decode(b []byte, format string) (*Spec, error) {
+	if format == "" {
+		trimmed := bytes.TrimLeft(bytes.TrimPrefix(b, []byte("\xef\xbb\xbf")), " \t\r\n")
+		format = "yaml"
+		if len(trimmed) > 0 && trimmed[0] == '{' {
+			format = "json"
+		}
+	}
+	var c Contract
+	switch format {
+	case "json":
+		dec := json.NewDecoder(bytes.NewReader(b))
+		dec.DisallowUnknownFields()
+		if err := dec.Decode(&c); err != nil {
+			return nil, err
+		}
+	case "yaml":
+		if err := yamlite.Unmarshal(b, &c); err != nil {
+			return nil, err
+		}
+	default:
+		return nil, fmt.Errorf("unknown contract format %q", format)
 	}
 	return Parse(c)
 }

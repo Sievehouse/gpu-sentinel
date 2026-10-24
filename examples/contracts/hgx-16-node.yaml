@@ -1,6 +1,6 @@
-# Authoring format for humans. Convert to the JSON the engine reads with:
-#   capledger-harness convert-contract --in hgx-16-node.yaml --out hgx-16-node.json
-# Keep decimals quoted so they stay exact.
+# capledger reads this YAML directly (v0.2+), for example:
+#   capledger sla compute --contract hgx-16-node.yaml --events ... --period 2026-10
+# hgx-16-node.json is the same contract in JSON and has the same digest.
 apiVersion: capacity-ledger/v1alpha1
 kind: ContractSLA
 metadata:
