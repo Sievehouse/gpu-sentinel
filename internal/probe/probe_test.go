@@ -7,6 +7,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -170,6 +171,7 @@ func TestBenchmarkFloor(t *testing.T) {
 }
 
 func TestAMDVisibilityFromSysfs(t *testing.T) {
+	skipOnWindows(t)
 	root := t.TempDir()
 	drv := filepath.Join(root, "bus", "pci", "drivers", "amdgpu")
 	for _, n := range []string{"0000:05:00.0", "0000:65:00.0"} {
@@ -204,5 +206,14 @@ func TestHelpers(t *testing.T) {
 	}
 	if _, err := New(Config{Node: "n", ExpectedGPUs: 8, Writer: &evidence.Writer{}, Vendor: "intel"}); err == nil {
 		t.Fatal("unknown vendor accepted")
+	}
+}
+
+// skipOnWindows skips tests that build a fake Linux sysfs tree, whose PCI
+// address names contain ':' and cannot be created on Windows.
+func skipOnWindows(t *testing.T) {
+	t.Helper()
+	if runtime.GOOS == "windows" {
+		t.Skip("needs Linux sysfs file names")
 	}
 }

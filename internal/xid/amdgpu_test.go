@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"runtime"
 	"testing"
 )
 
@@ -72,6 +73,7 @@ func fakeRAS(t *testing.T, root, card, pci, block, content string) {
 }
 
 func TestRASCountersAndTracker(t *testing.T) {
+	skipOnWindows(t)
 	root := t.TempDir()
 	fakeRAS(t, root, "card1", "0000:05:00.0", "umc", "ue: 0\nce: 2\n")
 	fakeRAS(t, root, "card1", "0000:05:00.0", "gfx", "ue: 0\nce: 0\n")
@@ -106,6 +108,7 @@ func TestRASCountersAndTracker(t *testing.T) {
 }
 
 func TestCountAMDGPUs(t *testing.T) {
+	skipOnWindows(t)
 	root := t.TempDir()
 	drv := filepath.Join(root, "bus", "pci", "drivers", "amdgpu")
 	for _, name := range []string{"0000:05:00.0", "0000:65:00.0", "bind", "module", "new_id"} {
@@ -123,5 +126,14 @@ func TestPolicyRejectsUnknownAMDClass(t *testing.T) {
 	_, err := ParsePolicy([]byte(`{"version":"x","xid":{},"amd":{"gpu_on_fire":{"action":"node_down"}},"default":{"action":"review"}}`))
 	if err == nil {
 		t.Fatal("unknown AMD class accepted")
+	}
+}
+
+// skipOnWindows skips tests that build a fake Linux sysfs tree, whose PCI
+// address names contain ':' and cannot be created on Windows.
+func skipOnWindows(t *testing.T) {
+	t.Helper()
+	if runtime.GOOS == "windows" {
+		t.Skip("needs Linux sysfs file names")
 	}
 }

@@ -83,7 +83,7 @@ func TestGPUCountDrop(t *testing.T) {
 	if st := a.Stats(); st.Events != 1 || st.Observations != 1 {
 		t.Fatalf("unexpected stats %+v", st)
 	}
-	if CountGPUs("0, 00000000:18:00.0\n1, 00000000:2A:00.0\n\n") != 2 {
+	if CountGPUs("0, 00000000:18:00.0\n1, 00000000:2A:00.0\n\nUnable to determine the device handle for GPU 0000:3A:00.0: Unknown Error\n") != 2 {
 		t.Fatal("CountGPUs miscounted")
 	}
 }

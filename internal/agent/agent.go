@@ -15,6 +15,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -330,12 +331,14 @@ func FollowKmsg(ctx context.Context, fromStart bool, handle func(string) error) 
 	}
 }
 
-// CountGPUs counts GPUs in `nvidia-smi --query-gpu=... --format=csv,noheader`
-// output: one GPU per non-empty line.
+// CountGPUs counts GPUs in `nvidia-smi --query-gpu=index,... --format=csv,noheader`
+// output: one GPU per line that starts with a GPU index. Error lines such as
+// "Unable to determine the device handle for GPU ..." are not GPUs.
 func CountGPUs(out string) int {
 	n := 0
 	for _, line := range strings.Split(out, "\n") {
-		if strings.TrimSpace(line) != "" {
+		first, _, _ := strings.Cut(line, ",")
+		if _, err := strconv.Atoi(strings.TrimSpace(first)); err == nil {
 			n++
 		}
 	}
