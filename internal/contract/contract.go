@@ -1,4 +1,4 @@
-﻿// Package contract loads and validates the machine-readable SLA terms of a
+// Package contract loads and validates the machine-readable SLA terms of a
 // GPU capacity contract.
 //
 // The spec is deliberately small. It captures what the engine needs to turn

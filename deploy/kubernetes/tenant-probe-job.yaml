@@ -1,4 +1,4 @@
-﻿# Tenant side: run "capledger probe" next to your own workload, so that you
+# Tenant side: run "capledger probe" next to your own workload, so that you
 # keep your own signed record of when your GPUs were usable.
 #
 # The probe must see the same GPUs as the workload. In Kubernetes the device

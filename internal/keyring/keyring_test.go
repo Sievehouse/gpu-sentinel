@@ -1,4 +1,4 @@
-﻿package keyring
+package keyring
 
 import (
 	"crypto/ed25519"

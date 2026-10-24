@@ -1,4 +1,4 @@
-﻿// Package bundle packs evidence files (an acceptance report and its raw
+// Package bundle packs evidence files (an acceptance report and its raw
 // results, a monthly statement with its inputs) into one signed .tar.gz that
 // anyone holding the signer's public key can check offline.
 //

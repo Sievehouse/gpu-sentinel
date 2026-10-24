@@ -1,4 +1,4 @@
-﻿// Package events defines the availability events the SLA engine consumes and
+// Package events defines the availability events the SLA engine consumes and
 // loads them from JSON Lines.
 //
 // An event is one transition for one node: it went down, came back, became

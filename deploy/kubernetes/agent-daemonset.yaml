@@ -1,4 +1,4 @@
-﻿# Capacity Ledger agent: one pod per GPU node, read-only towards the host.
+# Capacity Ledger agent: one pod per GPU node, read-only towards the host.
 #
 # By default it tails /var/log/kern.log (Ubuntu/Debian with rsyslog), which
 # needs no privileges beyond membership of the "adm" group (gid 4). For hosts

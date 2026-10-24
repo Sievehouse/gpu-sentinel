@@ -1,4 +1,4 @@
-﻿// Package keyring records which signing keys a verifier trusts, who holds
+// Package keyring records which signing keys a verifier trusts, who holds
 // them, what role they play and which nodes they may speak for.
 //
 // A key announcement in an evidence log proves only that someone holds the

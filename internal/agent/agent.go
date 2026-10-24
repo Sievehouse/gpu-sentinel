@@ -1,4 +1,4 @@
-﻿// Package agent is the in-cluster collector. It reads kernel log lines,
+// Package agent is the in-cluster collector. It reads kernel log lines,
 // recognises NVIDIA XID and SXID messages, records every one as a signed
 // observation and turns node-level faults into SLA down events.
 //

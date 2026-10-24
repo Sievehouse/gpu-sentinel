@@ -1,4 +1,4 @@
-﻿package gaps
+package gaps
 
 import (
 	"reflect"

@@ -1,4 +1,4 @@
-﻿// Command capledger is the Capacity Ledger command-line tool: the provider
+// Command capledger is the Capacity Ledger command-line tool: the provider
 // agent, the tenant probe, the SLA engine, evidence logs, keyrings and
 // signed evidence bundles in one static binary.
 package main

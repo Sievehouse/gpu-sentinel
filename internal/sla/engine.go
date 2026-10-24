@@ -1,4 +1,4 @@
-﻿// Package sla turns availability events into a sealed SLA statement.
+// Package sla turns availability events into a sealed SLA statement.
 //
 // The computation is deterministic: the same contract, events and period
 // always produce byte-identical canonical output and the same statement hash.
