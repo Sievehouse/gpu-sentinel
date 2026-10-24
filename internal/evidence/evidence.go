@@ -75,12 +75,13 @@ func (e Entry) DecodePayload(v any) error { return json.Unmarshal(e.Payload, v) 
 
 // Writer appends signed entries to one log file.
 type Writer struct {
-	path  string
-	priv  ed25519.PrivateKey
-	keyID string
-	seq   int64
-	prev  string
-	now   func() time.Time
+	path      string
+	priv      ed25519.PrivateKey
+	keyID     string
+	seq       int64
+	prev      string
+	now       func() time.Time
+	announced bool
 }
 
 // OpenWriter prepares to append to path, which may not exist yet. It reads
@@ -106,11 +107,38 @@ func OpenWriter(path string, priv ed25519.PrivateKey) (*Writer, error) {
 	if n := len(entries); n > 0 {
 		w.seq, w.prev = entries[n-1].Seq, entries[n-1].Hash
 	}
+	for _, e := range entries {
+		if e.Kind == KindKey && e.KeyID == w.keyID {
+			w.announced = true
+		}
+	}
 	return w, nil
 }
 
 // KeyID returns the id of the signing key.
 func (w *Writer) KeyID() string { return w.keyID }
+
+// PublicKey returns the public half of the signing key.
+func (w *Writer) PublicKey() ed25519.PublicKey { return w.priv.Public().(ed25519.PublicKey) }
+
+// Announce appends a self-signed key announcement, unless this log already
+// holds one for the writer's key. It reports whether an entry was written.
+// Verifiers enrol the announced key in a keyring (capledger keyring import);
+// an announcement on its own grants no trust.
+func (w *Writer) Announce(node, role, software string) (bool, error) {
+	if w.announced {
+		return false, nil
+	}
+	pemText, err := PublicKeyPEM(w.PublicKey())
+	if err != nil {
+		return false, err
+	}
+	if _, err := w.Append(KindKey, KeyAnnouncement{KeyID: w.keyID, PublicKey: pemText, Node: node, Role: role, Software: software}); err != nil {
+		return false, err
+	}
+	w.announced = true
+	return true, nil
+}
 
 // NextSeq returns the sequence number the next entry will get.
 func (w *Writer) NextSeq() int64 { return w.seq + 1 }
@@ -202,6 +230,16 @@ const maxProblems = 50
 // Verify checks sequence numbers, the hash chain, every entry hash and every
 // signature. keys maps key ids to trusted public keys.
 func Verify(r io.Reader, keys map[string]ed25519.PublicKey) Report {
+	return VerifyWith(r, keys, nil)
+}
+
+// EntryCheck is an extra policy check run on every correctly signed entry,
+// for example a keyring's validity window. A non-nil error is reported as a
+// problem for that entry.
+type EntryCheck func(Entry) error
+
+// VerifyWith is Verify plus an optional policy check per entry.
+func VerifyWith(r io.Reader, keys map[string]ed25519.PublicKey, check EntryCheck) Report {
 	rep := Report{Problems: []string{}, KeyIDs: []string{}, Kinds: []string{}}
 	entries, err := ReadEntries(r)
 	if err != nil {
@@ -241,6 +279,10 @@ func Verify(r io.Reader, keys map[string]ed25519.PublicKey) Report {
 				problem("seq %d: signed by unknown key %s", e.Seq, e.KeyID)
 			case err != nil || !ed25519.Verify(pub, digest, sig):
 				problem("seq %d: invalid signature", e.Seq)
+			case check != nil:
+				if cerr := check(e); cerr != nil {
+					problem("seq %d: %v", e.Seq, cerr)
+				}
 			}
 		}
 		if !keySeen[e.KeyID] {
@@ -267,12 +309,31 @@ func Verify(r io.Reader, keys map[string]ed25519.PublicKey) Report {
 
 // VerifyFile verifies the log at path.
 func VerifyFile(path string, keys map[string]ed25519.PublicKey) Report {
+	return VerifyFileWith(path, keys, nil)
+}
+
+// VerifyFileWith verifies the log at path with an extra policy check.
+func VerifyFileWith(path string, keys map[string]ed25519.PublicKey, check EntryCheck) Report {
 	f, err := os.Open(path)
 	if err != nil {
 		return Report{Path: path, Problems: []string{err.Error()}, KeyIDs: []string{}, Kinds: []string{}}
 	}
 	defer f.Close()
-	rep := Verify(f, keys)
+	rep := VerifyWith(f, keys, check)
 	rep.Path = path
 	return rep
+}
+
+// ReadFile parses every entry of the log at path without verifying it.
+func ReadFile(path string) ([]Entry, error) {
+	f, err := os.Open(path)
+	if err != nil {
+		return nil, err
+	}
+	defer f.Close()
+	entries, err := ReadEntries(f)
+	if err != nil {
+		return nil, fmt.Errorf("%s: %w", path, err)
+	}
+	return entries, nil
 }
