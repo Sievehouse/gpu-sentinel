@@ -1,4 +1,4 @@
-﻿# Capacity Ledger
+﻿# gpu-sentinel
 
 [![ci](https://github.com/Sievehouse/gpu-sentinel/actions/workflows/ci.yml/badge.svg)](https://github.com/Sievehouse/gpu-sentinel/actions/workflows/ci.yml)
 
