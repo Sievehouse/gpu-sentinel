@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math/big"
 	"math/rand"
+	"reflect"
 	"strings"
 	"testing"
 
@@ -286,5 +287,120 @@ func TestExclusionCapAndMinIncident(t *testing.T) {
 	}
 	if len(st.Warnings) != 1 || !strings.Contains(st.Warnings[0], "n9") {
 		t.Fatalf("expected one unknown-node warning, got %v", st.Warnings)
+	}
+}
+
+// Statements published with v0.1 must keep their exact hashes: the 0.2
+// engine stamps semantics 0.1.0 when no 0.2 feature is used.
+func TestGoldenHashesFromV01(t *testing.T) {
+	cases := []struct{ contract, events, hash string }{
+		{"../../examples/contracts/hgx-16-node.json", "../../examples/events/hgx-16-node-2026-10.jsonl", "d6280aea2086f9bf153922421dffbc4d44fbe17cc1106ba5184cad29f99323fc"},
+		{"../../examples/contracts/hgx-16-node.yaml", "../../examples/events/hgx-16-node-2026-10.jsonl", "d6280aea2086f9bf153922421dffbc4d44fbe17cc1106ba5184cad29f99323fc"},
+		{"../../examples/contracts/nvl72-2-racks.json", "../../examples/events/nvl72-2026-10.jsonl", "9099227ae4737d87a2b556667047a3e0f06ac521c04e4e8c3a73a4ac95e9578b"},
+	}
+	for _, c := range cases {
+		spec, evs := load(t, c.contract, c.events)
+		st, err := Compute(spec, evs, october)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if st.StatementSHA256 != c.hash || st.EngineVersion != Semantics010 {
+			t.Errorf("%s: hash %s (semantics %s), want %s (0.1.0)", c.contract, st.StatementSHA256, st.EngineVersion, c.hash)
+		}
+	}
+}
+
+func loadAll(t *testing.T, contractPath string, eventPaths ...string) (*contract.Spec, []events.Event) {
+	t.Helper()
+	spec, err := contract.Load(contractPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var all []events.Event
+	for _, p := range eventPaths {
+		evs, err := events.ReadFile(p)
+		if err != nil {
+			t.Fatal(err)
+		}
+		all = append(all, evs...)
+	}
+	return spec, all
+}
+
+func unmonitoredByNode(st *Statement) map[string]int64 {
+	out := map[string]int64{}
+	for _, n := range st.Nodes {
+		if n.UnmonitoredSeconds > 0 {
+			out[n.Node] = n.UnmonitoredSeconds
+		}
+	}
+	return out
+}
+
+// Worked example in docs/sla-spec.md ("Unmonitored time").
+func TestUnmonitoredReportOnly(t *testing.T) {
+	spec, evs := loadAll(t, "../../examples/contracts/hgx-16-node.yaml",
+		"../../examples/events/hgx-16-node-2026-10.jsonl", "../../examples/events/hgx-16-node-2026-10-gaps.jsonl")
+	st, err := Compute(spec, evs, october)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if st.Summary.DowntimeNodeSeconds != 127680 || st.Summary.AvailabilityPercent != "99.7021" || st.Credit.Percent != 5 {
+		t.Fatalf("report-only gaps must not change downtime: %+v %+v", st.Summary, st.Credit)
+	}
+	want := map[string]int64{"gpu-008": 172800, "gpu-010": 9000, "gpu-016": 93300}
+	if got := unmonitoredByNode(st); !reflect.DeepEqual(got, want) {
+		t.Fatalf("unmonitored %v, want %v", got, want)
+	}
+	if st.Summary.UnmonitoredNodeSeconds != 275100 || st.EngineVersion != Semantics020 {
+		t.Fatalf("summary %+v, semantics %s", st.Summary, st.EngineVersion)
+	}
+	if err := Replay(spec, evs, st); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestUnmonitoredCountAsDown(t *testing.T) {
+	spec, evs := loadAll(t, "../../examples/contracts/hgx-16-node-strict.yaml",
+		"../../examples/events/hgx-16-node-2026-10.jsonl", "../../examples/events/hgx-16-node-2026-10-gaps.jsonl")
+	st, err := Compute(spec, evs, october)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := nodeSeconds(st)
+	if got["gpu-008"] != [2]int64{172800, 0} {
+		t.Errorf("gpu-008: 48 h of silence should count: %v", got["gpu-008"])
+	}
+	if got["gpu-010"] != [2]int64{0, 10800} {
+		t.Errorf("gpu-010: silence inside announced maintenance stays excluded: %v", got["gpu-010"])
+	}
+	if got["gpu-016"] != [2]int64{93600, 0} {
+		t.Errorf("gpu-016: silence during an outage must not be counted twice: %v", got["gpu-016"])
+	}
+	if st.Summary.DowntimeNodeSeconds != 300480 || st.Summary.AvailabilityPercent != "99.2988" {
+		t.Fatalf("summary %+v", st.Summary)
+	}
+	if st.Credit.Percent != 10 || st.Credit.Amount != "30000.00" || st.Summary.UnmonitoredPolicy != "count-as-down" {
+		t.Fatalf("credit %+v", st.Credit)
+	}
+	for _, n := range st.Nodes {
+		if n.Node == "gpu-008" && (len(n.Incidents) != 1 || strings.Join(n.Incidents[0].Causes, ",") != "no-heartbeat") {
+			t.Fatalf("gpu-008 incident not attributed to the missing heartbeat: %+v", n.Incidents)
+		}
+	}
+}
+
+func TestReplayRefusesUnknownSemantics(t *testing.T) {
+	spec, evs := load(t, "../../examples/contracts/hgx-16-node.json", "../../examples/events/hgx-16-node-2026-10.jsonl")
+	st, err := Compute(spec, evs, october)
+	if err != nil {
+		t.Fatal(err)
+	}
+	st.EngineVersion = "9.9.9"
+	if err := st.Seal(); err != nil {
+		t.Fatal(err)
+	}
+	if err := Replay(spec, evs, st); err == nil || !strings.Contains(err.Error(), "needs engine semantics 9.9.9") {
+		t.Fatalf("got %v", err)
 	}
 }

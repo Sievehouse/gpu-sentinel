@@ -1,0 +1,8 @@
+# Unmonitored stretches for October 2026, as "capledger events export --derive-gaps" would produce
+# them from heartbeats. Use together with hgx-16-node-2026-10.jsonl. Worked through in docs/sla-spec.md.
+{"id":"gap:gpu-008:2026-10-12T03:00:00Z","ts":"2026-10-12T03:00:00Z","node":"gpu-008","type":"unmonitored_start","cause":"no-heartbeat","source":"gap-detector","note":"heartbeats stopped"}
+{"id":"gap:gpu-008:2026-10-12T03:00:00Z:end","ts":"2026-10-14T03:00:00Z","node":"gpu-008","type":"unmonitored_end","source":"gap-detector"}
+{"id":"gap:gpu-010:2026-10-14T02:10:00Z","ts":"2026-10-14T02:10:00Z","node":"gpu-010","type":"unmonitored_start","cause":"no-heartbeat","source":"gap-detector","note":"heartbeats stopped"}
+{"id":"gap:gpu-010:2026-10-14T02:10:00Z:end","ts":"2026-10-14T04:40:00Z","node":"gpu-010","type":"unmonitored_end","source":"gap-detector"}
+{"id":"gap:gpu-016:2026-10-30T22:05:00Z","ts":"2026-10-30T22:05:00Z","node":"gpu-016","type":"unmonitored_start","cause":"no-heartbeat","source":"gap-detector","note":"no heartbeat between the last heartbeat and the window end"}
+{"id":"gap:gpu-016:2026-10-30T22:05:00Z:end","ts":"2026-11-01T00:00:00Z","node":"gpu-016","type":"unmonitored_end","source":"gap-detector"}

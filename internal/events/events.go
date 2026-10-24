@@ -31,12 +31,17 @@ const (
 	DegradedEnd      Type = "degraded_end"
 	MaintenanceStart Type = "maintenance_start"
 	MaintenanceEnd   Type = "maintenance_end"
+	// UnmonitoredStart and UnmonitoredEnd bound a stretch with no heartbeat
+	// from a node's monitoring. They are derived from heartbeats by
+	// "capledger events export --derive-gaps", not written by hand.
+	UnmonitoredStart Type = "unmonitored_start"
+	UnmonitoredEnd   Type = "unmonitored_end"
 )
 
 // Valid reports whether t is a known event type.
 func (t Type) Valid() bool {
 	switch t {
-	case Down, Up, DegradedStart, DegradedEnd, MaintenanceStart, MaintenanceEnd:
+	case Down, Up, DegradedStart, DegradedEnd, MaintenanceStart, MaintenanceEnd, UnmonitoredStart, UnmonitoredEnd:
 		return true
 	}
 	return false

@@ -17,6 +17,10 @@
 //     every node of the rack is down.
 //  6. Sum node downtime, compute availability as an exact fraction and pick
 //     the highest credit tier whose threshold is above availability.
+//
+// Unmonitored time (stretches with no heartbeat, derived from evidence logs)
+// is always reported. If the contract says "count-as-down", it is also
+// countable downtime and goes through steps 2 to 5 like any outage.
 package sla
 
 import (
@@ -30,9 +34,21 @@ import (
 	"github.com/Sievehouse/capacity-ledger/internal/interval"
 )
 
-// EngineVersion is recorded in every statement. Bump it whenever the
-// computation changes, because replays must use the same engine version.
-const EngineVersion = "0.1.0"
+// EngineVersion is the version of this engine. Bump it whenever the
+// computation changes.
+const EngineVersion = "0.2.0"
+
+// Semantics versions. A statement's engineVersion field records the oldest
+// semantics that reproduces it: inputs that use no 0.2 feature (unmonitored
+// time) give statements byte-identical to engine 0.1.0, so statements and
+// hashes published with v0.1 still replay.
+const (
+	Semantics010 = "0.1.0"
+	Semantics020 = "0.2.0"
+)
+
+// Supported reports whether this engine can replay statements of semantics v.
+func Supported(v string) bool { return v == Semantics010 || v == Semantics020 }
 
 // StatementKind identifies a statement document.
 const StatementKind = "SLAStatement"
@@ -52,12 +68,13 @@ func (p Period) Validate() error {
 }
 
 type segment struct {
-	iv       interval.Interval
-	kind     string // down | degraded | maintenance
-	causes   []string
-	ids      []string
-	excluded bool
-	reason   string
+	iv         interval.Interval
+	kind       string // down | degraded | maintenance | unmonitored
+	causes     []string
+	ids        []string
+	excluded   bool
+	reason     string
+	reportOnly bool // unmonitored time under the "report" policy
 }
 
 type warnCounts struct {
@@ -71,6 +88,8 @@ type warnCounts struct {
 	maintNoNotice    int
 	degradedIgnored  int
 	unknownNodeTotal int
+	unmonEndWithout  int
+	dupUnmonitored   int
 }
 
 // Compute builds and seals the statement for one contract and period.
@@ -105,10 +124,17 @@ func Compute(spec *contract.Spec, evs []events.Event, p Period) (*Statement, err
 	segs := make(map[string][]segment, len(nodes))
 	nodeDown := make(map[string]interval.Set, len(nodes))
 	allowedExcl := make(map[string]interval.Set, len(nodes))
+	unmonitored := make(map[string]interval.Set, len(nodes))
 	for _, n := range nodes {
 		segs[n] = buildSegments(spec, byNode[n], p, w)
-		var countable, excluded []interval.Interval
+		var countable, excluded, unmon []interval.Interval
 		for _, sg := range segs[n] {
+			if sg.kind == "unmonitored" {
+				unmon = append(unmon, sg.iv)
+			}
+			if sg.reportOnly {
+				continue
+			}
 			if sg.excluded {
 				excluded = append(excluded, sg.iv)
 			} else {
@@ -119,6 +145,7 @@ func Compute(spec *contract.Spec, evs []events.Event, p Period) (*Statement, err
 		down := interval.Normalize(countable).Subtract(allowed).Union(overflow).DropShorterThan(spec.MinIncident)
 		nodeDown[n] = down
 		allowedExcl[n] = allowed
+		unmonitored[n] = interval.Normalize(unmon)
 	}
 
 	final := make(map[string]interval.Set, len(nodes))
@@ -144,9 +171,8 @@ func Compute(spec *contract.Spec, evs []events.Event, p Period) (*Statement, err
 	}
 
 	st := &Statement{
-		APIVersion:    contract.APIVersion,
-		Kind:          StatementKind,
-		EngineVersion: EngineVersion,
+		APIVersion: contract.APIVersion,
+		Kind:       StatementKind,
 		Contract: ContractRef{
 			ID:       spec.Contract.Metadata.ID,
 			Version:  spec.Contract.Metadata.Version,
@@ -158,9 +184,9 @@ func Compute(spec *contract.Spec, evs []events.Event, p Period) (*Statement, err
 		Nodes:  []NodeResult{},
 	}
 
-	var downTotal, exclTotal int64
+	var downTotal, exclTotal, unmonTotal int64
 	for _, n := range nodes {
-		nr := NodeResult{Node: n, DowntimeSeconds: final[n].Total(), ExcludedSeconds: allowedExcl[n].Total()}
+		nr := NodeResult{Node: n, DowntimeSeconds: final[n].Total(), ExcludedSeconds: allowedExcl[n].Total(), UnmonitoredSeconds: unmonitored[n].Total()}
 		if r, ok := spec.RackOf(n); ok {
 			nr.Rack = r
 		}
@@ -192,9 +218,22 @@ func Compute(spec *contract.Spec, evs []events.Event, p Period) (*Statement, err
 				Seconds: iv.Len(), Reasons: reasons, EventIDs: ids,
 			})
 		}
+		for _, iv := range unmonitored[n] {
+			var ids []string
+			for _, sg := range segs[n] {
+				if sg.kind == "unmonitored" && sg.iv.Overlaps(iv) {
+					ids = append(ids, sg.ids...)
+				}
+			}
+			nr.Unmonitored = append(nr.Unmonitored, Span{
+				Start: events.FormatTime(iv.Start), End: events.FormatTime(iv.End),
+				Seconds: iv.Len(), EventIDs: uniqueSorted(ids),
+			})
+		}
 		downTotal += nr.DowntimeSeconds
 		exclTotal += nr.ExcludedSeconds
-		if nr.DowntimeSeconds > 0 || nr.ExcludedSeconds > 0 {
+		unmonTotal += nr.UnmonitoredSeconds
+		if nr.DowntimeSeconds > 0 || nr.ExcludedSeconds > 0 || nr.UnmonitoredSeconds > 0 {
 			st.Nodes = append(st.Nodes, nr)
 		}
 		if nr.DowntimeSeconds > 0 {
@@ -213,8 +252,14 @@ func Compute(spec *contract.Spec, evs []events.Event, p Period) (*Statement, err
 	st.Summary.ExcludedNodeSeconds = exclTotal
 	st.Summary.DowntimeGPUHours = new(big.Rat).SetFrac64(downTotal*gpus, 3600).FloatString(2)
 	st.Summary.AvailabilityPercent = availPct.FloatString(4)
+	st.Summary.UnmonitoredNodeSeconds = unmonTotal
+	st.Summary.UnmonitoredPolicy = spec.Contract.Measurement.Unmonitored
 	st.Credit = credit(spec, availPct)
 	st.Warnings = w.render()
+	st.EngineVersion = Semantics010
+	if unmonTotal > 0 || spec.Contract.Measurement.Unmonitored != "" {
+		st.EngineVersion = Semantics020
+	}
 
 	if err := st.Seal(); err != nil {
 		return nil, err
@@ -231,7 +276,7 @@ func buildSegments(spec *contract.Spec, evs []events.Event, p Period, w *warnCou
 		notice    int64
 		hasNotice bool
 	}
-	var down, deg, maint *openState
+	var down, deg, maint, unmon *openState
 	var out []segment
 
 	closeSeg := func(o *openState, end int64, kind, endID string) {
@@ -263,6 +308,8 @@ func buildSegments(spec *contract.Spec, evs []events.Event, p Period, w *warnCou
 					w.maintNoNotice++
 				}
 			}
+		case "unmonitored":
+			sg.reportOnly = !spec.CountsUnmonitored()
 		}
 		out = append(out, sg)
 	}
@@ -321,6 +368,25 @@ func buildSegments(spec *contract.Spec, evs []events.Event, p Period, w *warnCou
 			}
 			closeSeg(maint, u, "maintenance", e.ID)
 			maint = nil
+		case events.UnmonitoredStart:
+			if unmon == nil {
+				unmon = &openState{start: u}
+			} else {
+				w.dupUnmonitored++
+			}
+			cause := e.Cause
+			if cause == "" {
+				cause = "unmonitored"
+			}
+			unmon.causes = appendCause(unmon.causes, cause)
+			unmon.ids = append(unmon.ids, e.ID)
+		case events.UnmonitoredEnd:
+			if unmon == nil {
+				w.unmonEndWithout++
+				continue
+			}
+			closeSeg(unmon, u, "unmonitored", e.ID)
+			unmon = nil
 		}
 	}
 	// Anything still open runs to the end of the period.
@@ -332,6 +398,9 @@ func buildSegments(spec *contract.Spec, evs []events.Event, p Period, w *warnCou
 	}
 	if maint != nil {
 		closeSeg(maint, p.End, "maintenance", "")
+	}
+	if unmon != nil {
+		closeSeg(unmon, p.End, "unmonitored", "")
 	}
 	return out
 }
@@ -434,6 +503,8 @@ func (w *warnCounts) render() []string {
 	add(w.dupMaintenance, "maintenance_start event(s) during open maintenance were merged")
 	add(w.maintNoNotice, "maintenance window(s) without noticeTs were treated as unannounced")
 	add(w.degradedIgnored, "degraded interval(s) ignored because the contract does not count degradation as downtime")
+	add(w.unmonEndWithout, "unmonitored_end event(s) without a preceding unmonitored_start were ignored")
+	add(w.dupUnmonitored, "unmonitored_start event(s) during an open unmonitored stretch were merged")
 	return out
 }
 
@@ -478,8 +549,9 @@ func Replay(spec *contract.Spec, evs []events.Event, stored *Statement) error {
 	if err := stored.CheckSeal(); err != nil {
 		return err
 	}
-	if stored.EngineVersion != EngineVersion {
-		return fmt.Errorf("statement was produced by engine %s; this binary is %s", stored.EngineVersion, EngineVersion)
+	if !Supported(stored.EngineVersion) {
+		return fmt.Errorf("statement needs engine semantics %s; this binary (engine %s) supports %s and %s",
+			stored.EngineVersion, EngineVersion, Semantics010, Semantics020)
 	}
 	start, err := events.ParseTime(stored.Period.Start)
 	if err != nil {

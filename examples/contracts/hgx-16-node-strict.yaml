@@ -1,0 +1,30 @@
+# Same terms as hgx-16-node.yaml, except that time without heartbeats counts
+# as downtime (measurement.unmonitored: count-as-down). Illustrative only.
+apiVersion: capacity-ledger/v1alpha1
+kind: ContractSLA
+metadata:
+  id: example-neocloud--example-lab--2026-strict
+  version: 1
+  provider: Example Neocloud (fictional)
+  customer: Example Lab (fictional)
+  description: 16 HGX nodes with 8 GPUs each and a monthly availability SLA. Illustrative terms only, not legal advice.
+cluster:
+  gpusPerNode: 8
+  nodes: [gpu-001, gpu-002, gpu-003, gpu-004, gpu-005, gpu-006, gpu-007, gpu-008,
+          gpu-009, gpu-010, gpu-011, gpu-012, gpu-013, gpu-014, gpu-015, gpu-016]
+measurement:
+  minIncident: 5m              # outages shorter than this do not count
+  degradedCountsAsDown: true   # e.g. a node below the agreed fabric floor
+  unmonitored: count-as-down   # no heartbeat = nobody can vouch for the node = downtime
+exclusions:
+  maintenanceNotice: 72h       # announced at least 72h ahead -> excluded
+  maxExcludedPerNode: 8h       # excluded time beyond 8h per node counts again
+  customerCaused: true         # causes starting with "customer" are excluded
+credits:
+  monthlyFee: "300000.00"
+  currency: USD
+  capPercent: 30
+  tiers:
+    - { availabilityBelow: "99.9", creditPercent: 5 }
+    - { availabilityBelow: "99.5", creditPercent: 10 }
+    - { availabilityBelow: "99.0", creditPercent: 25 }

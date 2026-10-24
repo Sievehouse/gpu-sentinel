@@ -60,6 +60,9 @@ type Summary struct {
 	DowntimeGPUHours    string `json:"downtimeGpuHours"`
 	AvailabilityPercent string `json:"availabilityPercent"`
 	NodesWithDowntime   int    `json:"nodesWithDowntime"`
+	// Since 0.2: time without heartbeats, and the contract's policy for it.
+	UnmonitoredNodeSeconds int64  `json:"unmonitoredNodeSeconds,omitempty"`
+	UnmonitoredPolicy      string `json:"unmonitoredPolicy,omitempty"`
 }
 
 // Credit is the service credit owed for the period.
@@ -80,6 +83,17 @@ type NodeResult struct {
 	ExcludedSeconds int64       `json:"excludedSeconds"`
 	Incidents       []Incident  `json:"incidents,omitempty"`
 	Exclusions      []Exclusion `json:"exclusions,omitempty"`
+	// Since 0.2: stretches with no heartbeat, whatever the policy.
+	UnmonitoredSeconds int64  `json:"unmonitoredSeconds,omitempty"`
+	Unmonitored        []Span `json:"unmonitored,omitempty"`
+}
+
+// Span is a stretch of time with the events that bound it.
+type Span struct {
+	Start    string   `json:"start"`
+	End      string   `json:"end"`
+	Seconds  int64    `json:"seconds"`
+	EventIDs []string `json:"eventIds,omitempty"`
 }
 
 // Incident is one countable stretch of downtime. Via is "node" when the node
@@ -168,12 +182,22 @@ func (s *Statement) Text() string {
 		credit += fmt.Sprintf(" = %s %s", s.Credit.Amount, s.Credit.Currency)
 	}
 	fmt.Fprintf(&b, "Credit        %s\n", credit)
+	if s.Summary.UnmonitoredNodeSeconds > 0 || s.Summary.UnmonitoredPolicy != "" {
+		policy := s.Summary.UnmonitoredPolicy
+		if policy == "" {
+			policy = "report"
+		}
+		fmt.Fprintf(&b, "Unmonitored   %d node-seconds without heartbeats (policy: %s)\n", s.Summary.UnmonitoredNodeSeconds, policy)
+	}
 	if len(s.Nodes) > 0 {
 		b.WriteString("\nNode            Downtime(s)  Excluded(s)  Incidents\n")
 		for _, n := range s.Nodes {
 			var parts []string
 			for _, in := range n.Incidents {
 				parts = append(parts, fmt.Sprintf("%s %ds [%s]", in.Start, in.Seconds, strings.Join(append([]string{in.Via}, in.Causes...), " ")))
+			}
+			if n.UnmonitoredSeconds > 0 {
+				parts = append(parts, fmt.Sprintf("unmonitored %ds", n.UnmonitoredSeconds))
 			}
 			fmt.Fprintf(&b, "%-15s %11d  %11d  %s\n", n.Node, n.DowntimeSeconds, n.ExcludedSeconds, strings.Join(parts, "; "))
 		}

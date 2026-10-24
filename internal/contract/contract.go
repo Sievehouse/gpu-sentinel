@@ -75,7 +75,17 @@ type Measurement struct {
 	// RackRule, when set, marks a whole rack down while at least
 	// NodesDownThreshold of its nodes are down.
 	RackRule *RackRule `json:"rackRule,omitempty"`
+	// Unmonitored says what stretches without a heartbeat mean: "report"
+	// (the default: listed in the statement, no effect on availability) or
+	// "count-as-down" (countable downtime, subject to the same exclusions).
+	Unmonitored string `json:"unmonitored,omitempty"`
 }
+
+// Unmonitored-time policies.
+const (
+	UnmonitoredReport      = "report"
+	UnmonitoredCountAsDown = "count-as-down"
+)
 
 // RackRule marks every node of a rack down while enough of its nodes are down.
 type RackRule struct {
@@ -129,6 +139,11 @@ type Spec struct {
 
 	nodeSet map[string]struct{}
 	rackOf  map[string]string
+}
+
+// CountsUnmonitored reports whether time without heartbeats is downtime.
+func (s *Spec) CountsUnmonitored() bool {
+	return s.Contract.Measurement.Unmonitored == UnmonitoredCountAsDown
 }
 
 // HasNode reports whether the contract covers node.
@@ -275,6 +290,11 @@ func Parse(c Contract) (*Spec, error) {
 	var err error
 	if s.MinIncident, err = seconds(c.Measurement.MinIncident); err != nil {
 		fail("measurement.minIncident: %v", err)
+	}
+	switch c.Measurement.Unmonitored {
+	case "", UnmonitoredReport, UnmonitoredCountAsDown:
+	default:
+		fail("measurement.unmonitored must be %q or %q", UnmonitoredReport, UnmonitoredCountAsDown)
 	}
 	if rr := c.Measurement.RackRule; rr != nil {
 		if len(c.Cluster.Racks) == 0 {

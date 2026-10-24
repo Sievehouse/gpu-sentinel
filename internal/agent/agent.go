@@ -21,6 +21,7 @@ import (
 
 	"github.com/Sievehouse/capacity-ledger/internal/events"
 	"github.com/Sievehouse/capacity-ledger/internal/evidence"
+	"github.com/Sievehouse/capacity-ledger/internal/gaps"
 	"github.com/Sievehouse/capacity-ledger/internal/xid"
 )
 
@@ -37,6 +38,7 @@ type Config struct {
 
 // Stats counts what the agent has processed.
 type Stats struct {
+	Heartbeats   int `json:"heartbeats"`
 	Lines        int `json:"lines"`
 	Observations int `json:"observations"`
 	Events       int `json:"events"`
@@ -51,6 +53,7 @@ type Agent struct {
 	lastDown time.Time
 	haveDown bool
 	stats    Stats
+	lastGPUs *int
 }
 
 // ObservationPayload is the payload of an "observation" evidence entry.
@@ -130,6 +133,8 @@ func (a *Agent) HandleLine(line string) error {
 func (a *Agent) HandleGPUCount(found, expected int) error {
 	a.mu.Lock()
 	defer a.mu.Unlock()
+	seen := found
+	a.lastGPUs = &seen
 	if expected <= 0 || found >= expected {
 		return nil
 	}
@@ -142,6 +147,25 @@ func (a *Agent) HandleGPUCount(found, expected int) error {
 	a.stats.Observations++
 	fmt.Fprintf(a.cfg.Log, "only %d of %d GPUs visible on %s\n", found, expected, a.cfg.Node)
 	return a.emit(events.Down, a.cfg.Now().UTC(), fmt.Sprintf("gpu-missing:%d/%d", found, expected), entry.Hash)
+}
+
+// Heartbeat records that the agent was alive now and promises the next
+// heartbeat within interval. Gap detection flags longer silences.
+func (a *Agent) Heartbeat(interval time.Duration) error {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	hb := gaps.Heartbeat{
+		Node:            a.cfg.Node,
+		TS:              a.cfg.Now().UTC().Format(time.RFC3339),
+		IntervalSeconds: int64(interval / time.Second),
+		Role:            "agent",
+		GPUs:            a.lastGPUs,
+	}
+	if _, err := a.cfg.Writer.Append(evidence.KindHeartbeat, hb); err != nil {
+		return err
+	}
+	a.stats.Heartbeats++
+	return nil
 }
 
 func (a *Agent) emit(typ events.Type, ts time.Time, cause, evidenceHash string) error {

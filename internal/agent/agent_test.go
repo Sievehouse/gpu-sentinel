@@ -11,6 +11,7 @@ import (
 
 	"github.com/Sievehouse/capacity-ledger/internal/events"
 	"github.com/Sievehouse/capacity-ledger/internal/evidence"
+	"github.com/Sievehouse/capacity-ledger/internal/gaps"
 	"github.com/Sievehouse/capacity-ledger/internal/xid"
 )
 
@@ -109,5 +110,53 @@ func TestFollowFileReadsAppendedLines(t *testing.T) {
 		}
 	case <-ctx.Done():
 		t.Fatal("appended line was not read")
+	}
+}
+
+// Heartbeats written by the agent are what gap detection reads back.
+func TestHeartbeatsFeedGapDetection(t *testing.T) {
+	pub, priv, _ := ed25519.GenerateKey(rand.Reader)
+	path := filepath.Join(t.TempDir(), "evidence.jsonl")
+	w, err := evidence.OpenWriter(path, priv)
+	if err != nil {
+		t.Fatal(err)
+	}
+	policy, _ := xid.DefaultPolicy()
+	now := time.Date(2026, 10, 3, 12, 0, 0, 0, time.UTC)
+	a, err := New(Config{Node: "gpu-003", Policy: policy, Writer: w, Now: func() time.Time { return now }})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := a.HandleGPUCount(8, 8); err != nil {
+		t.Fatal(err)
+	}
+	for _, offset := range []time.Duration{0, time.Minute, 2 * time.Minute, 30 * time.Minute} {
+		now = time.Date(2026, 10, 3, 12, 0, 0, 0, time.UTC).Add(offset)
+		if err := a.Heartbeat(time.Minute); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if a.Stats().Heartbeats != 4 {
+		t.Fatalf("stats %+v", a.Stats())
+	}
+	if rep := evidence.VerifyFile(path, map[string]ed25519.PublicKey{evidence.KeyID(pub): pub}); !rep.OK {
+		t.Fatalf("log does not verify: %v", rep.Problems)
+	}
+	entries, _ := evidence.ReadFile(path)
+	var hb gaps.Heartbeat
+	if err := entries[0].DecodePayload(&hb); err != nil || hb.GPUs == nil || *hb.GPUs != 8 || hb.IntervalSeconds != 60 {
+		t.Fatalf("heartbeat payload %+v (%v)", hb, err)
+	}
+	beats, err := gaps.BeatsFromEntries(entries, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	found, err := gaps.Find(beats, gaps.Options{MaxSilence: 300})
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Silent from 12:03 (next beat due) to 12:30.
+	if len(found) != 1 || found[0].From != "2026-10-03T12:03:00Z" || found[0].To != "2026-10-03T12:30:00Z" {
+		t.Fatalf("gaps %+v", found)
 	}
 }
