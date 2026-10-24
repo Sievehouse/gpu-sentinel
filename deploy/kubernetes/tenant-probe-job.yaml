@@ -1,0 +1,48 @@
+# Tenant side: run "capledger probe" next to your own workload, so that you
+# keep your own signed record of when your GPUs were usable.
+#
+# The probe must see the same GPUs as the workload. In Kubernetes the device
+# plugin gives GPUs to one container, so the probe runs inside the workload's
+# container, started in the background before the main process. Copy the
+# capledger binary into your image (it is one static file):
+#   COPY --from=ghcr.io/sievehouse/capacity-ledger-agent:0.2.0 /usr/local/bin/capledger /usr/local/bin/capledger
+#
+# Keep the evidence on storage you control and copy it off the cluster
+# regularly. The probe's key is created on first start; give its public key
+# (evidence/keys/capledger.pub.pem) to whoever will verify your records, or
+# let them enrol it from the log with "capledger keyring import --role tenant-probe".
+#
+# Compare with the provider at the end of the month:
+#   capledger events export --log probe-*.jsonl --keyring tenant-keyring.json --derive-gaps 5m --period 2026-10 > tenant.jsonl
+#   capledger sla corroborate --contract contract.yaml --events-a provider.jsonl --events-b tenant.jsonl --period 2026-10
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: training-with-probe
+spec:
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: trainer
+          image: registry.example.com/team/trainer:latest   # your image, with capledger copied in
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              capledger probe --node "$NODE_NAME" --expected-gpus 8 --interval 60s \
+                --log "/evidence/probe-$NODE_NAME.jsonl" --key-dir /evidence/keys &
+              exec python train.py
+          env:
+            - name: NODE_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+          resources:
+            limits:
+              nvidia.com/gpu: 8     # amd.com/gpu for AMD; then add --vendor amd to the probe
+          volumeMounts:
+            - { name: evidence, mountPath: /evidence }
+      volumes:
+        - name: evidence
+          persistentVolumeClaim:
+            claimName: tenant-evidence   # storage the tenant controls

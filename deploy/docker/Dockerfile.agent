@@ -1,12 +1,12 @@
 # syntax=docker/dockerfile:1
 # Build from the repository root:
-#   docker build -f deploy/docker/Dockerfile.agent -t capacity-ledger-agent:0.1.0 .
+#   docker build -f deploy/docker/Dockerfile.agent -t capacity-ledger-agent:0.2.0 .
 FROM golang:1.24 AS build
 WORKDIR /src
 COPY go.mod ./
 COPY cmd ./cmd
 COPY internal ./internal
-ARG VERSION=0.1.0
+ARG VERSION=0.2.0
 RUN CGO_ENABLED=0 go build -trimpath -ldflags "-s -w -X main.version=${VERSION}" -o /out/capledger ./cmd/capledger
 
 # Static, shell-less, non-root runtime image.
