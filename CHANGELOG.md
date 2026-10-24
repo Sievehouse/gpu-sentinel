@@ -2,7 +2,7 @@
 
 All notable changes to Capacity Ledger. Before version 1.0, minor versions may extend formats; every such change is listed here, and existing logs, statements and contracts keep working.
 
-## 0.2.0 (unreleased)
+## 0.2.0 (2026-10-25)
 
 ### Added
 

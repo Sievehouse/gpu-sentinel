@@ -1,6 +1,6 @@
 GO ?= go
 PYTHON ?= python3
-VERSION ?= 0.2.0-dev
+VERSION ?= 0.2.0
 
 .PHONY: all build test test-go test-py demo fmt vet clean
 
