@@ -199,7 +199,8 @@ func (s *Statement) Text() string {
 			if n.UnmonitoredSeconds > 0 {
 				parts = append(parts, fmt.Sprintf("unmonitored %ds", n.UnmonitoredSeconds))
 			}
-			fmt.Fprintf(&b, "%-15s %11d  %11d  %s\n", n.Node, n.DowntimeSeconds, n.ExcludedSeconds, strings.Join(parts, "; "))
+			line := fmt.Sprintf("%-15s %11d  %11d  %s", n.Node, n.DowntimeSeconds, n.ExcludedSeconds, strings.Join(parts, "; "))
+			b.WriteString(strings.TrimRight(line, " ") + "\n")
 		}
 	}
 	for _, w := range s.Warnings {
