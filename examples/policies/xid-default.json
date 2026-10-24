@@ -1,6 +1,6 @@
 {
-  "version": "starter-2026-10",
-  "note": "Starter mapping from NVIDIA XID codes to SLA actions. Review it against NVIDIA's XID documentation for your driver version and against the contract before using it for SLA decisions. node_down opens an incident that stays open until an up event arrives from a repair or health-check integration.",
+  "version": "starter-v0.2",
+  "note": "Starter mapping from NVIDIA XID codes and AMD amdgpu fault classes to SLA actions. Review it against the vendor documentation for your driver version and against the contract before using it for SLA decisions. node_down opens an incident that stays open until an up event arrives from a repair or health-check integration. observe records the message without an SLA event.",
   "xid": {
     "13": { "action": "app", "summary": "Graphics engine exception; usually caused by the application" },
     "31": { "action": "app", "summary": "GPU memory page fault; usually caused by the application" },
@@ -20,5 +20,14 @@
     "120": { "action": "node_down", "summary": "GSP error" }
   },
   "sxid": {},
+  "amd": {
+    "ras_uncorrectable": { "action": "node_down", "summary": "Uncorrectable hardware error reported by amdgpu RAS" },
+    "ras_correctable": { "action": "observe", "summary": "Correctable hardware error reported by amdgpu RAS" },
+    "gpu_reset_failed": { "action": "node_down", "summary": "GPU reset failed" },
+    "gpu_reset": { "action": "review", "summary": "GPU reset started; work running on the GPU was lost" },
+    "gpu_reset_succeeded": { "action": "observe", "summary": "GPU reset completed" },
+    "ring_timeout": { "action": "review", "summary": "Command ring timed out (a job hung)" },
+    "page_fault": { "action": "app", "summary": "GPU page fault; usually caused by the application" }
+  },
   "default": { "action": "review", "summary": "Not in the policy; needs a human decision" }
 }

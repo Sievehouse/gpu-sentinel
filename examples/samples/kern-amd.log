@@ -1,0 +1,7 @@
+2026-10-07T09:14:02+0000 mi355-02 kernel: amdgpu 0000:05:00.0: amdgpu: SMU is initialized successfully!
+2026-10-07T09:20:11+0000 mi355-02 kernel: amdgpu 0000:05:00.0: amdgpu: 3 correctable hardware errors detected in umc block
+2026-10-07T09:41:37+0000 mi355-02 kernel: amdgpu 0000:65:00.0: [drm:amdgpu_job_timedout [amdgpu]] *ERROR* ring gfx_0.0.0 timeout, signaled seq=18342, emitted seq=18344
+2026-10-07T09:41:38+0000 mi355-02 kernel: amdgpu 0000:65:00.0: amdgpu: GPU reset begin!
+2026-10-07T09:41:52+0000 mi355-02 kernel: amdgpu 0000:65:00.0: amdgpu: GPU reset(2) succeeded!
+2026-10-07T11:02:45+0000 mi355-02 kernel: amdgpu 0000:05:00.0: amdgpu: 1 uncorrectable hardware errors detected in umc block
+2026-10-07T11:02:46+0000 mi355-02 kernel: amdgpu 0000:05:00.0: amdgpu: [gfxhub] page fault (src_id:0 ring:24 vmid:3 pasid:32769, for process python3 pid 48211 thread python3 pid 48211)

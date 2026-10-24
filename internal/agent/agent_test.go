@@ -160,3 +160,58 @@ func TestHeartbeatsFeedGapDetection(t *testing.T) {
 		t.Fatalf("gaps %+v", found)
 	}
 }
+
+func TestAMDKernelLogAndRAS(t *testing.T) {
+	pub, priv, _ := ed25519.GenerateKey(rand.Reader)
+	path := filepath.Join(t.TempDir(), "evidence.jsonl")
+	w, err := evidence.OpenWriter(path, priv)
+	if err != nil {
+		t.Fatal(err)
+	}
+	policy, _ := xid.DefaultPolicy()
+	// Three minutes after the uncorrectable error in the sample log.
+	now := time.Date(2026, 10, 7, 11, 5, 45, 0, time.UTC)
+	a, err := New(Config{Node: "mi355-02", Policy: policy, Writer: w, Suppress: 10 * time.Minute, Now: func() time.Time { return now }})
+	if err != nil {
+		t.Fatal(err)
+	}
+	keys := map[string]ed25519.PublicKey{evidence.KeyID(pub): pub}
+	f, err := os.Open("../../examples/samples/kern-amd.log")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer f.Close()
+	if err := a.Run(context.Background(), f); err != nil {
+		t.Fatal(err)
+	}
+	// Six classified lines; only the uncorrectable RAS error opens an incident.
+	if st := a.Stats(); st.Observations != 6 || st.Events != 1 {
+		t.Fatalf("stats %+v", st)
+	}
+	baseline := []xid.RASCounter{{Device: "0000:05:00.0", Card: "card1", Block: "umc", UE: 1, CE: 3}}
+	if err := a.HandleRAS(baseline); err != nil {
+		t.Fatal(err)
+	}
+	later := []xid.RASCounter{{Device: "0000:05:00.0", Card: "card1", Block: "umc", UE: 2, CE: 3}}
+	if err := a.HandleRAS(later); err != nil {
+		t.Fatal(err)
+	}
+	// The counter increase is an observation; its down event is suppressed
+	// because the node went down less than the suppression window ago.
+	if st := a.Stats(); st.Observations != 7 || st.Events != 1 || st.Suppressed != 1 {
+		t.Fatalf("stats after RAS %+v", st)
+	}
+	if rep := evidence.VerifyFile(path, keys); !rep.OK {
+		t.Fatal(rep.Problems)
+	}
+	entries, _ := evidence.ReadFile(path)
+	var ev events.Event
+	for _, e := range entries {
+		if e.Kind == evidence.KindEvent {
+			_ = e.DecodePayload(&ev)
+		}
+	}
+	if ev.Cause != "amdgpu:ras_uncorrectable:umc" || ev.TS != "2026-10-07T11:02:45Z" {
+		t.Fatalf("event %+v", ev)
+	}
+}

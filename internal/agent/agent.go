@@ -54,6 +54,7 @@ type Agent struct {
 	haveDown bool
 	stats    Stats
 	lastGPUs *int
+	ras      *xid.RASTracker
 }
 
 // ObservationPayload is the payload of an "observation" evidence entry.
@@ -101,15 +102,46 @@ func (a *Agent) HandleLine(line string) error {
 	if !ok {
 		return nil
 	}
+	return a.record(o)
+}
+
+// HandleRAS records amdgpu RAS counter increases since the previous reading.
+// The first reading only sets the baseline.
+func (a *Agent) HandleRAS(readings []xid.RASCounter) error {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	if a.ras == nil {
+		a.ras = xid.NewRASTracker()
+	}
+	for _, o := range a.ras.Update(readings) {
+		if err := a.record(o); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// record writes an observation and, if the policy says so, an SLA event.
+// The caller holds a.mu.
+func (a *Agent) record(o xid.Observation) error {
 	rule := a.cfg.Policy.Classify(o)
-	entry, err := a.cfg.Writer.Append("observation", ObservationPayload{
+	entry, err := a.cfg.Writer.Append(evidence.KindObservation, ObservationPayload{
 		Node: a.cfg.Node, Observation: o, Action: rule.Action, Summary: rule.Summary, PolicyVersion: a.cfg.Policy.Version,
 	})
 	if err != nil {
 		return err
 	}
 	a.stats.Observations++
-	fmt.Fprintf(a.cfg.Log, "observed %s %d on %s (%s): %s\n", o.Kind, o.Code, o.Device, rule.Action, rule.Summary)
+	label := fmt.Sprintf("%s %d", o.Kind, o.Code)
+	cause := fmt.Sprintf("%s:%d", o.Kind, o.Code)
+	if o.Kind == "amdgpu" {
+		label = "amdgpu " + o.Class
+		cause = "amdgpu:" + o.Class
+		if o.Block != "" {
+			cause += ":" + o.Block
+		}
+	}
+	fmt.Fprintf(a.cfg.Log, "observed %s on %s (%s): %s\n", label, o.Device, rule.Action, rule.Summary)
 
 	var typ events.Type
 	switch rule.Action {
@@ -126,7 +158,7 @@ func (a *Agent) HandleLine(line string) error {
 			ts = t
 		}
 	}
-	return a.emit(typ, ts, fmt.Sprintf("%s:%d", o.Kind, o.Code), entry.Hash)
+	return a.emit(typ, ts, cause, entry.Hash)
 }
 
 // HandleGPUCount records a down event when fewer GPUs are visible than expected.
