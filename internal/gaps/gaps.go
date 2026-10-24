@@ -29,8 +29,9 @@ type Heartbeat struct {
 // Beat is one heartbeat in time.
 type Beat struct {
 	Node     string
-	TS       int64 // Unix seconds
-	Interval int64 // promised seconds until the next beat; 0 if unknown
+	TS       int64  // Unix seconds
+	Interval int64  // promised seconds until the next beat; 0 if unknown
+	Role     string // who sent it, e.g. "agent" or "tenant-probe"
 }
 
 // Gap is one stretch with no heartbeat for a node, [Start, End).
@@ -174,7 +175,7 @@ func BeatsFromEntries(entries []evidence.Entry, check NodeCheck) ([]Beat, error)
 		if err != nil {
 			return nil, fmt.Errorf("seq %d: heartbeat ts: %w", e.Seq, err)
 		}
-		out = append(out, Beat{Node: hb.Node, TS: t.Unix(), Interval: hb.IntervalSeconds})
+		out = append(out, Beat{Node: hb.Node, TS: t.Unix(), Interval: hb.IntervalSeconds, Role: hb.Role})
 	}
 	return out, nil
 }
