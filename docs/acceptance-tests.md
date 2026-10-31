@@ -37,7 +37,11 @@ Functional tests answer "does it work?". A node can pass every one and still be 
 
 ## Localising a slow collective
 
-When a 64-node all-reduce misses its floor, the harness does not test all 2,016 node pairs. It splits the failing group in half, tests both halves, and recurses; a single suspect is tested together with a node already known to be healthy. In simulation, two degraded nodes among 64 are found in about 23 tests over 7 rounds (`capledger-harness localize-sim`). On a real fabric, check that concurrent tests on disjoint groups do not interfere; if they do, run each round's tests one after another.
+When a 64-node all-reduce misses its floor, the harness does not test all 2,016 node pairs. It splits the failing group in half, tests both halves, and recurses; a single suspect is tested together with a node already known to be healthy. In simulation, two degraded nodes among 64 are found in about 23 tests over 7 rounds (`capledger-harness localize-sim`). Splitting a failing group into more parts per round trades tests for rounds: with `--fanout 8` the same two nodes are found in 3 rounds and 25 tests. On a real fabric, check that concurrent tests on disjoint groups do not interfere; if they do, run each round's tests one after another.
+
+## Proving it works
+
+[Running the proof of value](proof-of-value.md) describes how to inject known faults on rented test clusters (`harness/scripts/inject_fault.sh`), plan the trials (`capledger-harness pov-plan`) and score the results against the roadmap's thresholds (`capledger-harness pov-score`).
 
 ## Floors and criteria
 
