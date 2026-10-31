@@ -1,0 +1,222 @@
+{
+  "apiVersion": "v1",
+  "kind": "List",
+  "items": [
+    {
+      "apiVersion": "v1",
+      "kind": "Node",
+      "metadata": {
+        "name": "gpu-002",
+        "labels": {
+          "kubernetes.io/hostname": "gpu-002",
+          "nvidia.com/gpu.present": "true",
+          "nvidia.com/gpu.product": "NVIDIA-H100-80GB-HBM3"
+        }
+      },
+      "spec": {},
+      "status": {
+        "allocatable": {
+          "cpu": "224",
+          "memory": "2063591948Ki",
+          "nvidia.com/gpu": "8",
+          "pods": "110"
+        },
+        "capacity": {
+          "cpu": "224",
+          "memory": "2063694348Ki",
+          "nvidia.com/gpu": "8",
+          "pods": "110"
+        },
+        "conditions": [
+          {
+            "type": "MemoryPressure",
+            "status": "False",
+            "reason": "KubeletHasSufficientMemory",
+            "message": "kubelet has sufficient memory available",
+            "lastTransitionTime": "2026-09-28T09:00:00Z"
+          },
+          {
+            "type": "DiskPressure",
+            "status": "False",
+            "reason": "KubeletHasNoDiskPressure",
+            "message": "kubelet has no disk pressure",
+            "lastTransitionTime": "2026-09-28T09:00:00Z"
+          },
+          {
+            "type": "PIDPressure",
+            "status": "False",
+            "reason": "KubeletHasSufficientPID",
+            "message": "kubelet has sufficient PID available",
+            "lastTransitionTime": "2026-09-28T09:00:00Z"
+          },
+          {
+            "type": "Ready",
+            "status": "True",
+            "reason": "KubeletReady",
+            "message": "kubelet is posting ready status",
+            "lastTransitionTime": "2026-09-28T09:00:00Z"
+          },
+          {
+            "type": "SysLogsXIDError",
+            "status": "False",
+            "reason": "HealthCheckPassed",
+            "message": "No XID errors detected",
+            "lastTransitionTime": "2026-09-28T09:00:00Z"
+          },
+          {
+            "type": "GpuMemWatch",
+            "status": "False",
+            "reason": "HealthCheckPassed",
+            "message": "GPU memory health check passed",
+            "lastTransitionTime": "2026-09-28T09:00:00Z"
+          }
+        ]
+      }
+    },
+    {
+      "apiVersion": "v1",
+      "kind": "Node",
+      "metadata": {
+        "name": "gpu-003",
+        "labels": {
+          "kubernetes.io/hostname": "gpu-003",
+          "nvidia.com/gpu.present": "true",
+          "nvidia.com/gpu.product": "NVIDIA-H100-80GB-HBM3"
+        }
+      },
+      "spec": {},
+      "status": {
+        "allocatable": {
+          "cpu": "224",
+          "memory": "2063591948Ki",
+          "nvidia.com/gpu": "8",
+          "pods": "110"
+        },
+        "capacity": {
+          "cpu": "224",
+          "memory": "2063694348Ki",
+          "nvidia.com/gpu": "8",
+          "pods": "110"
+        },
+        "conditions": [
+          {
+            "type": "MemoryPressure",
+            "status": "False",
+            "reason": "KubeletHasSufficientMemory",
+            "message": "kubelet has sufficient memory available",
+            "lastTransitionTime": "2026-09-28T09:00:00Z"
+          },
+          {
+            "type": "DiskPressure",
+            "status": "False",
+            "reason": "KubeletHasNoDiskPressure",
+            "message": "kubelet has no disk pressure",
+            "lastTransitionTime": "2026-09-28T09:00:00Z"
+          },
+          {
+            "type": "PIDPressure",
+            "status": "False",
+            "reason": "KubeletHasSufficientPID",
+            "message": "kubelet has sufficient PID available",
+            "lastTransitionTime": "2026-09-28T09:00:00Z"
+          },
+          {
+            "type": "Ready",
+            "status": "True",
+            "reason": "KubeletReady",
+            "message": "kubelet is posting ready status",
+            "lastTransitionTime": "2026-10-03T06:38:00Z"
+          },
+          {
+            "type": "SysLogsXIDError",
+            "status": "False",
+            "reason": "HealthCheckPassed",
+            "message": "No XID errors detected",
+            "lastTransitionTime": "2026-10-03T06:40:00Z"
+          },
+          {
+            "type": "GpuMemWatch",
+            "status": "False",
+            "reason": "HealthCheckPassed",
+            "message": "GPU memory health check passed",
+            "lastTransitionTime": "2026-09-28T09:00:00Z"
+          }
+        ]
+      }
+    },
+    {
+      "apiVersion": "v1",
+      "kind": "Node",
+      "metadata": {
+        "name": "gpu-004",
+        "labels": {
+          "kubernetes.io/hostname": "gpu-004",
+          "nvidia.com/gpu.present": "true",
+          "nvidia.com/gpu.product": "NVIDIA-H100-80GB-HBM3"
+        }
+      },
+      "spec": {},
+      "status": {
+        "allocatable": {
+          "cpu": "224",
+          "memory": "2063591948Ki",
+          "nvidia.com/gpu": "8",
+          "pods": "110"
+        },
+        "capacity": {
+          "cpu": "224",
+          "memory": "2063694348Ki",
+          "nvidia.com/gpu": "8",
+          "pods": "110"
+        },
+        "conditions": [
+          {
+            "type": "MemoryPressure",
+            "status": "False",
+            "reason": "KubeletHasSufficientMemory",
+            "message": "kubelet has sufficient memory available",
+            "lastTransitionTime": "2026-09-28T09:00:00Z"
+          },
+          {
+            "type": "DiskPressure",
+            "status": "False",
+            "reason": "KubeletHasNoDiskPressure",
+            "message": "kubelet has no disk pressure",
+            "lastTransitionTime": "2026-09-28T09:00:00Z"
+          },
+          {
+            "type": "PIDPressure",
+            "status": "False",
+            "reason": "KubeletHasSufficientPID",
+            "message": "kubelet has sufficient PID available",
+            "lastTransitionTime": "2026-09-28T09:00:00Z"
+          },
+          {
+            "type": "Ready",
+            "status": "True",
+            "reason": "KubeletReady",
+            "message": "kubelet is posting ready status",
+            "lastTransitionTime": "2026-09-28T09:00:00Z"
+          },
+          {
+            "type": "SysLogsXIDError",
+            "status": "False",
+            "reason": "HealthCheckPassed",
+            "message": "No XID errors detected",
+            "lastTransitionTime": "2026-09-28T09:00:00Z"
+          },
+          {
+            "type": "GpuMemWatch",
+            "status": "False",
+            "reason": "HealthCheckPassed",
+            "message": "GPU memory health check passed",
+            "lastTransitionTime": "2026-09-28T09:00:00Z"
+          }
+        ]
+      }
+    }
+  ],
+  "metadata": {
+    "resourceVersion": ""
+  }
+}
