@@ -47,7 +47,7 @@ func jsonLines(out string) []string {
 }
 
 func TestVersion(t *testing.T) {
-	if out := mustRun(t, "version"); !strings.Contains(out, "capledger 0.3.0 (sla engine 0.3.0)") {
+	if out := mustRun(t, "version"); !strings.Contains(out, "capledger 0.4.0 (sla engine 0.3.0)") {
 		t.Fatalf("version: %s", out)
 	}
 }
