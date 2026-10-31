@@ -39,6 +39,18 @@ type Server struct {
 	logw    io.Writer
 	logMu   sync.Mutex
 	now     func() time.Time
+	// witnessName names the witness in checkpoints; prefix is prepended to
+	// logged paths. A Hub sets both to tell its contracts apart.
+	witnessName string
+	prefix      string
+	muxOnce     sync.Once
+	mux         http.Handler
+}
+
+// handler returns the HTTP API, built once.
+func (s *Server) handler() http.Handler {
+	s.muxOnce.Do(func() { s.mux = s.Handler() })
+	return s.mux
 }
 
 type state struct {
@@ -55,7 +67,7 @@ func NewServer(store *Store, cfg *Config, kr *keyring.Keyring, witness ed25519.P
 	if logw == nil {
 		logw = io.Discard
 	}
-	s := &Server{store: store, witness: witness, logw: logw, now: time.Now}
+	s := &Server{store: store, witness: witness, logw: logw, now: time.Now, witnessName: "ledger witness"}
 	s.state.Store(&state{cfg: cfg, kr: kr})
 	return s, nil
 }
@@ -153,7 +165,7 @@ func (s *Server) auth(roles []string, h handler) http.Handler {
 			code = http.StatusOK
 		}
 		s.logMu.Lock()
-		fmt.Fprintf(s.logw, "%s %s %s %s %d %s\n", start.UTC().Format(time.RFC3339), who, r.Method, r.URL.Path, code, s.now().Sub(start).Round(time.Millisecond))
+		fmt.Fprintf(s.logw, "%s %s %s %s %d %s\n", start.UTC().Format(time.RFC3339), who, r.Method, s.prefix+r.URL.Path, code, s.now().Sub(start).Round(time.Millisecond))
 		s.logMu.Unlock()
 	})
 }
@@ -380,7 +392,7 @@ func (s *Server) Checkpoint(force bool) (*CheckpointResult, error) {
 			}
 		}
 	}
-	cp, err := evidence.NewCheckpoint(heads, "ledger witness", s.witness, s.now())
+	cp, err := evidence.NewCheckpoint(heads, s.witnessName, s.witness, s.now())
 	if err != nil {
 		return nil, err
 	}
