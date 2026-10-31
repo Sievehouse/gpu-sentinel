@@ -14,6 +14,7 @@ from .inventory import Inventory
 from .localize import simulate
 from .parsers.nccl import parse_nccl_output
 from .plan import STAGES, Plan, build_plan
+from .pov import load_trials, plan_trials, score, to_text
 from .report import Criteria, build_report, to_markdown
 from .runner import load_results, run_plan
 
@@ -88,8 +89,38 @@ def cmd_convert(a: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_pov_plan(a: argparse.Namespace) -> int:
+    inv = Inventory.load(a.inventory)
+    trials = plan_trials(list(inv.nodes), a.repeats, a.seed)
+    with open(a.out, "w", encoding="utf-8") as f:
+        f.write("# Proof-of-value trials (docs/roadmap.md). For each trial: run the inject commands on the\n")
+        f.write("# victim node, run plan/run/report into the report path, run the restore commands.\n")
+        f.write("# Fill in the CAPITALISED placeholders for your cluster first.\n")
+        for t in trials:
+            row = {"trial": t.trial, "fault": t.fault, "injected": t.injected, "report": f"runs/{t.trial}/report.json"}
+            if t.magnitude is not None:
+                row["magnitude"] = t.magnitude
+            if t.inject:
+                row["inject"], row["restore"] = t.inject, t.restore
+            f.write(json.dumps(row) + "\n")
+    faulty = sum(1 for t in trials if t.injected)
+    print(f"wrote {a.out}: {len(trials)} trials ({len(trials) - faulty} clean, {faulty} with a fault) on {len(inv.nodes)} nodes")
+    return 0
+
+
+def cmd_pov_score(a: argparse.Namespace) -> int:
+    levels = ("review", "reject") if a.flag_level == "review" else ("reject",)
+    s = score(load_trials(a.trials, levels))
+    if a.out:
+        with open(a.out, "w", encoding="utf-8") as f:
+            json.dump(s, f, indent=2)
+            f.write("\n")
+    print(to_text(s), end="")
+    return 1 if s["verdict"] == "fail" else 0
+
+
 def main(argv: list[str] | None = None) -> int:
-    p = argparse.ArgumentParser(prog="capledger-harness", description="Acceptance tests for GPU clusters (Capacity Ledger).")
+    p = argparse.ArgumentParser(prog="capledger-harness", description="Acceptance tests for GPU clusters (GPU Sentinel).")
     p.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
     sub = p.add_subparsers(dest="cmd", required=True)
 
@@ -137,6 +168,20 @@ def main(argv: list[str] | None = None) -> int:
     s.add_argument("--in", dest="input", required=True)
     s.add_argument("--out", required=True)
     s.set_defaults(fn=cmd_convert)
+
+    s = sub.add_parser("pov-plan", help="plan the proof-of-value fault-injection trials (F0-F6)")
+    s.add_argument("--inventory", required=True)
+    s.add_argument("--repeats", type=int, default=3, help="repeat every faulty trial this many times (clean runs: 10x)")
+    s.add_argument("--seed", type=int, default=1)
+    s.add_argument("--out", default="trials.jsonl")
+    s.set_defaults(fn=cmd_pov_plan)
+
+    s = sub.add_parser("pov-score", help="score trials against the proof-of-value thresholds")
+    s.add_argument("--trials", required=True)
+    s.add_argument("--flag-level", choices=("review", "reject"), default="review",
+                   help="lowest verdict that counts as flagging a node (default: review)")
+    s.add_argument("--out", help="also write the score as JSON")
+    s.set_defaults(fn=cmd_pov_score)
 
     a = p.parse_args(argv)
     return a.fn(a)
