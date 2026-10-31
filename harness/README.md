@@ -11,7 +11,7 @@ capledger-harness report --results results.jsonl --cluster example-hgx-32gpu --e
   --criteria ../examples/criteria/hgx-h100-400g.yaml --metrics ../examples/samples/node_metrics.json \
   --out report.json --markdown report.md
 capledger-harness outliers --metrics ../examples/samples/node_metrics.json
-capledger-harness localize-sim --nodes 64 --bad 2
+capledger-harness localize-sim --nodes 64 --bad 2              # add --fanout 8 for fewer rounds
 capledger-harness parse-nccl ../examples/samples/nccl_all_reduce_4node.txt
 ```
 
@@ -20,6 +20,19 @@ capledger-harness parse-nccl ../examples/samples/nccl_all_reduce_4node.txt
 ## AMD Instinct clusters
 
 Set `vendor: amd` in the inventory (see `../examples/inventory/mi300x-2-node.yaml`). The audit then counts the PCI functions bound to the `amdgpu` driver and records `amd-smi` output, the single-node stage runs the ROCm Validation Suite GPU stress test (or your own `single_node_command`, which must exit non-zero on failure), and the collective stage runs rccl-tests, whose binaries and output match nccl-tests. AMD support is reference code that has not yet been validated on hardware in this repository.
+
+## Proof of value
+
+For the technical proof on rented test clusters ([runbook](../docs/proof-of-value.md)):
+
+```bash
+capledger-harness pov-plan --inventory inventory.yaml --repeats 3 --out trials.jsonl   # the F0-F6 trial matrix
+sudo scripts/inject_fault.sh --yes --truth injections.jsonl power-cap 10                # on the victim node; then: restore
+capledger-harness pov-score --trials trials.jsonl --out score.json                      # recall, false flags, rounds
+python3 scripts/agent_overhead.py --pid "$(pidof capledger)" --seconds 3600
+```
+
+`capledger_harness.sla_reference` is an independent Python implementation of the SLA rules. The tests compare it with the Go engine when `CAPLEDGER_BIN` points at a built `capledger` (CI does this on 1,000 random months).
 
 ## Sign the results
 
@@ -36,4 +49,4 @@ Anyone holding the public key can check the bundle offline; changing, adding or 
 
 `scripts/burnin.py` needs PyTorch on GPU nodes (`pip install -e "harness[burnin]"`). It is reference code and has not yet been validated on hardware in this repository.
 
-Tests: `pytest -q` (no GPUs needed; tool output is simulated).
+Tests: `pytest -q` (no GPUs needed; tool output is simulated). With `CAPLEDGER_BIN=../bin/capledger` they also compare the reference implementation with the engine.
