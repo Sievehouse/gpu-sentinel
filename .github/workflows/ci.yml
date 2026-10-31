@@ -42,9 +42,16 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python }}
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.24.x"
+      - name: Build capledger for the differential test
+        run: make build
       - name: Install the harness
         run: pip install -e "harness[dev]"
-      - name: Test
-        run: cd harness && pytest -q
-      - name: GPU scripts compile
-        run: python -m py_compile harness/scripts/burnin.py harness/scripts/gemm_bench.py
+      - name: Test (including the Python reference against the Go engine)
+        run: cd harness && CAPLEDGER_BIN="$PWD/../bin/capledger" CAPLEDGER_DIFF_CASES=1000 pytest -q
+      - name: Scripts compile
+        run: |
+          python -m py_compile harness/scripts/burnin.py harness/scripts/gemm_bench.py harness/scripts/agent_overhead.py
+          bash -n harness/scripts/inject_fault.sh
