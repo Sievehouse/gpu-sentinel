@@ -42,3 +42,14 @@ def test_noisy_simulation_is_correct(seed):
     out = simulate(n_nodes=64, n_bad=2, degradation=0.20, noise=0.015, seed=seed)
     assert out["correct"], out
     assert out["logical_tests"] < out["all_pairs_tests_for_comparison"] / 50
+
+
+def test_fanout_trades_tests_for_rounds():
+    from capledger_harness.localize import split
+    assert split(tuple("abcde"), 2) == [tuple("ab"), tuple("cde")]
+    assert [len(p) for p in split(tuple(range(10)), 4)] == [2, 2, 3, 3]
+    assert split(tuple("ab"), 8) == [("a",), ("b",)]
+    halving = simulate(n_nodes=64, n_bad=2, seed=7)
+    wide = simulate(n_nodes=64, n_bad=2, seed=7, fanout=8)
+    assert halving["rounds"] == 7 and halving["logical_tests"] == 23
+    assert wide["correct"] and wide["rounds"] == 3 and wide["logical_tests"] > halving["logical_tests"]
