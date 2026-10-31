@@ -105,6 +105,9 @@ type Incident struct {
 	Via      string   `json:"via"`
 	Causes   []string `json:"causes,omitempty"`
 	EventIDs []string `json:"eventIds,omitempty"`
+	// Since 0.3, under a reconciling contract: which parties recorded the
+	// incident, "both", "provider" or "tenant".
+	SeenBy string `json:"seenBy,omitempty"`
 }
 
 // Exclusion is one stretch of unavailability that does not count.
@@ -194,7 +197,11 @@ func (s *Statement) Text() string {
 		for _, n := range s.Nodes {
 			var parts []string
 			for _, in := range n.Incidents {
-				parts = append(parts, fmt.Sprintf("%s %ds [%s]", in.Start, in.Seconds, strings.Join(append([]string{in.Via}, in.Causes...), " ")))
+				tags := []string{in.Via}
+				if in.SeenBy != "" {
+					tags = append(tags, "seen:"+in.SeenBy)
+				}
+				parts = append(parts, fmt.Sprintf("%s %ds [%s]", in.Start, in.Seconds, strings.Join(append(tags, in.Causes...), " ")))
 			}
 			if n.UnmonitoredSeconds > 0 {
 				parts = append(parts, fmt.Sprintf("unmonitored %ds", n.UnmonitoredSeconds))
