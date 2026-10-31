@@ -41,6 +41,10 @@ type Contract struct {
 	Measurement Measurement `json:"measurement"`
 	Exclusions  Exclusions  `json:"exclusions"`
 	Credits     Credits     `json:"credits"`
+	// Sources, since 0.3, lists which event sources the contract accepts and
+	// which party each belongs to. Contracts without it accept every event,
+	// as before.
+	Sources *Sources `json:"sources,omitempty"`
 }
 
 // Metadata identifies the contract and its version.
@@ -79,7 +83,65 @@ type Measurement struct {
 	// (the default: listed in the statement, no effect on availability) or
 	// "count-as-down" (countable downtime, subject to the same exclusions).
 	Unmonitored string `json:"unmonitored,omitempty"`
+	// Reconcile, since 0.3, says how the provider's and the tenant's records
+	// combine into one outage clock. Required when sources.tenant is set.
+	Reconcile *Reconcile `json:"reconcile,omitempty"`
 }
+
+// Reconcile decides, for every episode of downtime that either party
+// recorded on a node, whether it counts and when it starts and ends. An
+// episode is a stretch in which at least one party recorded the node as
+// unavailable without interruption.
+type Reconcile struct {
+	// Count is "either" (an episode counts if either party recorded it),
+	// "both" (only if both did), "provider" or "tenant" (only if that party
+	// did).
+	Count string `json:"count"`
+	// Start is "earliest" (the first record of either party), "latest" (the
+	// later of the two parties' first records), "provider" or "tenant" (that
+	// party's first record; the other party's if it recorded nothing).
+	Start string `json:"start"`
+	// End is "latest", "earliest", "provider" or "tenant", the same way
+	// round: "tenant" ends the episode when the tenant saw the node again.
+	End string `json:"end"`
+}
+
+// Reconcile values.
+const (
+	SideProvider  = "provider"
+	SideTenant    = "tenant"
+	CountEither   = "either"
+	CountBoth     = "both"
+	ClockEarliest = "earliest"
+	ClockLatest   = "latest"
+)
+
+// Sources is the contract's allow-list of event sources, by party.
+type Sources struct {
+	Provider *SourceSide `json:"provider,omitempty"`
+	Tenant   *SourceSide `json:"tenant,omitempty"`
+	// Unlisted is "reject" (the default: an event from any other source
+	// stops the computation) or "ignore" (such events are skipped and
+	// counted in the statement's warnings).
+	Unlisted string `json:"unlisted,omitempty"`
+}
+
+// SourceSide lists the sources one party speaks through. An event that
+// carries a signer role (from "events export --signers") belongs to the
+// side whose roles include it; its self-declared source name is then not
+// considered. Other events are matched by their source name. Roles are
+// attested by the keyring and so are the stronger choice: a contract that
+// lists only roles accepts only events from verified, signed logs.
+type SourceSide struct {
+	Roles   []string `json:"roles,omitempty"`
+	Sources []string `json:"sources,omitempty"`
+}
+
+// Unlisted-source policies.
+const (
+	UnlistedReject = "reject"
+	UnlistedIgnore = "ignore"
+)
 
 // Unmonitored-time policies.
 const (
@@ -139,6 +201,37 @@ type Spec struct {
 
 	nodeSet map[string]struct{}
 	rackOf  map[string]string
+	byRole  map[string]string // signer role -> side
+	byName  map[string]string // source name -> side
+}
+
+// HasSources reports whether the contract restricts event sources (0.3).
+func (s *Spec) HasSources() bool { return s.Contract.Sources != nil }
+
+// Reconciles reports whether the contract combines two parties' records.
+func (s *Spec) Reconciles() bool { return s.Contract.Measurement.Reconcile != nil }
+
+// SideOf returns the party ("provider" or "tenant") an event belongs to
+// under the contract's sources, or false if the source is not listed. An
+// event with a signer role is matched by that role only; one without is
+// matched by its source name. Without a sources block every event belongs
+// to the provider side.
+func (s *Spec) SideOf(signerRole, source string) (string, bool) {
+	if s.Contract.Sources == nil {
+		return SideProvider, true
+	}
+	if signerRole != "" {
+		side, ok := s.byRole[signerRole]
+		return side, ok
+	}
+	side, ok := s.byName[source]
+	return side, ok
+}
+
+// IgnoresUnlisted reports whether events from unlisted sources are skipped
+// rather than rejected.
+func (s *Spec) IgnoresUnlisted() bool {
+	return s.Contract.Sources != nil && s.Contract.Sources.Unlisted == UnlistedIgnore
 }
 
 // CountsUnmonitored reports whether time without heartbeats is downtime.
@@ -296,6 +389,7 @@ func Parse(c Contract) (*Spec, error) {
 	default:
 		fail("measurement.unmonitored must be %q or %q", UnmonitoredReport, UnmonitoredCountAsDown)
 	}
+	parseSources(c, s, fail)
 	if rr := c.Measurement.RackRule; rr != nil {
 		if len(c.Cluster.Racks) == 0 {
 			fail("measurement.rackRule needs cluster.racks")
@@ -346,6 +440,82 @@ func Parse(c Contract) (*Spec, error) {
 		return nil, errors.Join(errs...)
 	}
 	return s, nil
+}
+
+var sourceNameRe = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._:/@-]{0,127}$`)
+var roleSlugRe = regexp.MustCompile(`^[a-z0-9][a-z0-9-]{0,62}$`)
+
+// parseSources validates sources and measurement.reconcile and fills the
+// role and name indexes.
+func parseSources(c Contract, s *Spec, fail func(string, ...any)) {
+	s.byRole, s.byName = map[string]string{}, map[string]string{}
+	src, rec := c.Sources, c.Measurement.Reconcile
+	if src == nil {
+		if rec != nil {
+			fail("measurement.reconcile needs sources.provider and sources.tenant")
+		}
+		return
+	}
+	switch src.Unlisted {
+	case "", UnlistedReject, UnlistedIgnore:
+	default:
+		fail("sources.unlisted must be %q or %q", UnlistedReject, UnlistedIgnore)
+	}
+	if src.Provider == nil {
+		fail("sources.provider is required when sources is set")
+	}
+	for _, side := range []struct {
+		name string
+		v    *SourceSide
+	}{{SideProvider, src.Provider}, {SideTenant, src.Tenant}} {
+		if side.v == nil {
+			continue
+		}
+		if len(side.v.Roles) == 0 && len(side.v.Sources) == 0 {
+			fail("sources.%s needs at least one role or source", side.name)
+		}
+		for _, r := range side.v.Roles {
+			if !roleSlugRe.MatchString(r) {
+				fail("sources.%s.roles: %q is not a keyring role (a lowercase slug)", side.name, r)
+				continue
+			}
+			if other, dup := s.byRole[r]; dup {
+				fail("role %q is listed for both sources.%s and sources.%s", r, other, side.name)
+			}
+			s.byRole[r] = side.name
+		}
+		for _, n := range side.v.Sources {
+			if !sourceNameRe.MatchString(n) {
+				fail("sources.%s.sources: %q is not a valid source name", side.name, n)
+				continue
+			}
+			if other, dup := s.byName[n]; dup {
+				fail("source %q is listed for both sources.%s and sources.%s", n, other, side.name)
+			}
+			s.byName[n] = side.name
+		}
+	}
+	if src.Tenant != nil && rec == nil {
+		fail("measurement.reconcile is required when sources.tenant is set: the contract must say how the two records combine")
+	}
+	if rec == nil {
+		return
+	}
+	if src.Tenant == nil {
+		fail("measurement.reconcile needs sources.tenant")
+	}
+	switch rec.Count {
+	case CountEither, CountBoth, SideProvider, SideTenant:
+	default:
+		fail("measurement.reconcile.count must be either, both, provider or tenant")
+	}
+	for _, f := range []struct{ name, v string }{{"start", rec.Start}, {"end", rec.End}} {
+		switch f.v {
+		case ClockEarliest, ClockLatest, SideProvider, SideTenant:
+		default:
+			fail("measurement.reconcile.%s must be earliest, latest, provider or tenant", f.name)
+		}
+	}
 }
 
 // seconds parses a Go duration into whole seconds. Empty means zero.
