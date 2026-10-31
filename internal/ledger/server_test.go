@@ -432,6 +432,16 @@ func TestConfigValidation(t *testing.T) {
 	}
 }
 
+func TestExampleConfigLoads(t *testing.T) {
+	c, err := LoadConfig("../../deploy/ledger/ledger.example.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if p, ok := c.ByRole(RoleCustomer); !ok || p.Name != "example-lab" || !p.MayWrite("tenant-probe") {
+		t.Fatalf("customer %+v", p)
+	}
+}
+
 func TestReload(t *testing.T) {
 	w := newWorld(t)
 	cfg := *w.server.state.Load().cfg
