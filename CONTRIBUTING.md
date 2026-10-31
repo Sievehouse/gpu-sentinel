@@ -10,6 +10,7 @@ python3 -m venv .venv && . .venv/bin/activate
 pip install -e "harness[dev]"  # Python 3.10+
 make test                      # gofmt check, go vet, Go tests, Python tests
 ./scripts/demo.sh              # also starts and stops a local ledger
+                               # on Windows: powershell -File scripts\demo.ps1 (keep both in step)
 cd harness && CAPLEDGER_BIN=../bin/capledger pytest -q   # include the engine vs reference comparison
 ```
 
