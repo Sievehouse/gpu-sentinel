@@ -37,6 +37,12 @@ const (
 	RoleTenantProbe         = "tenant-probe"
 	RoleHarness             = "harness"
 	RoleAuditor             = "auditor"
+	// Since 0.3: keys that sign statements, consents and checkpoints for a
+	// party, rather than evidence for a node.
+	RoleProvider  = "provider"
+	RoleCustomer  = "customer"
+	RoleFinancier = "financier"
+	RoleWitness   = "witness"
 )
 
 var roleRe = regexp.MustCompile(`^[a-z0-9][a-z0-9-]{0,62}$`)
@@ -207,6 +213,16 @@ func (k *Keyring) KeyAt(id string, t time.Time) (*Entry, error) {
 		return nil, err
 	}
 	return e, nil
+}
+
+// SignerAt returns the public key and role of a key that was enrolled and
+// valid at t. It has the shape of sla.SignerLookup.
+func (k *Keyring) SignerAt(id string, t time.Time) (ed25519.PublicKey, string, error) {
+	e, err := k.KeyAt(id, t)
+	if err != nil {
+		return nil, "", err
+	}
+	return e.pub, e.Role, nil
 }
 
 // PublicKeys returns every trusted key indexed by id, for evidence.Verify.
