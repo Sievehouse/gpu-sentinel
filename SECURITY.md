@@ -11,6 +11,8 @@ Please do not open public issues for security problems. Email **ymohit799057@gma
 - Keyring enforcement: entries or bundles accepted for a node or a time that their key is not enrolled for.
 - Evidence bundles: ways to make `bundle verify` accept changed, added or removed files, or to make `--extract` write outside its directory.
 - SLA engine determinism: inputs that produce different statements on different machines.
+- Checkpoints, statement signatures and feed consents: ways to make a rewritten log pass a checkpoint, or a signature or consent count for a party whose keyring role it does not have.
+- The ledger service: pushes accepted that do not continue a log or do not verify, writes to another party's log, reads of raw logs or the feed without the right role and consents, path traversal in the data directory.
 - Key handling.
 
 ## Supported versions
