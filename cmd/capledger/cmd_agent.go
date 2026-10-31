@@ -36,6 +36,7 @@ func cmdAgent(args []string, s streams) error {
 	heartbeat := fs.Duration("heartbeat", time.Minute, "heartbeat interval; 0 disables heartbeats, so gap detection sees the node as unmonitored")
 	rasEvery := fs.Duration("ras-interval", time.Minute, "AMD only: RAS error counter interval; 0 disables")
 	sysRoot := fs.String("sys-root", "/sys", "sysfs root, for AMD GPU counts and RAS counters")
+	redact := fs.Bool("redact", false, "remove process names and ids from recorded kernel lines (they can identify customer jobs)")
 	if err := parseFlags(fs, args); err != nil {
 		return err
 	}
@@ -60,7 +61,7 @@ func cmdAgent(args []string, s streams) error {
 	if err != nil {
 		return err
 	}
-	a, err := agent.New(agent.Config{Node: *node, Policy: policy, Writer: w, Suppress: *suppress, Log: s.err})
+	a, err := agent.New(agent.Config{Node: *node, Policy: policy, Writer: w, Suppress: *suppress, Redact: *redact, Log: s.err})
 	if err != nil {
 		return err
 	}
@@ -162,6 +163,7 @@ func cmdXIDParse(args []string, s streams) error {
 	fs := newFlags("xid parse", s)
 	policyPath := fs.String("policy", "", "fault policy JSON (default: built-in starter policy)")
 	file := fs.String("file", "", "kernel log file (default: stdin)")
+	redact := fs.Bool("redact", false, "show lines as the agent records them with --redact")
 	if err := parseFlags(fs, args); err != nil {
 		return err
 	}
@@ -190,6 +192,9 @@ func cmdXIDParse(args []string, s streams) error {
 			continue
 		}
 		r := policy.Classify(o)
+		if *redact {
+			o = xid.Redact(o)
+		}
 		if err := enc.Encode(map[string]any{"observation": o, "action": r.Action, "summary": r.Summary}); err != nil {
 			return err
 		}
