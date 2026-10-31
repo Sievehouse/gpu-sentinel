@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Rename the Go module once you have chosen where the repository lives, e.g.
-#   ./scripts/rename-module.sh github.com/your-org/capacity-ledger
+#   ./scripts/rename-module.sh github.com/your-org/gpu-sentinel
 set -euo pipefail
 NEW="${1:?usage: $0 <new module path>}"
 OLD="$(go list -m)"
