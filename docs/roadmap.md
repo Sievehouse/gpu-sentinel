@@ -1,6 +1,6 @@
 # Roadmap
 
-Building is gated on customer evidence, not the other way round. The 30-day plan below comes from the opportunity research behind this project; the build milestones only start in earnest after Gate 4.
+Building is gated on customer evidence, not the other way round. The 30-day plan below comes from the opportunity research behind this project; the build milestones only start in earnest after Gate 4. Versions 0.2 and 0.3 were built ahead of that gate, so the most useful next step is the proof itself, not more features.
 
 ## 30-day validation plan
 
@@ -27,14 +27,17 @@ Interview evidence ladder: 0 positive feedback, 1 a specific recent problem with
 
 Pass thresholds: at least 95% recall for degradations of 10% or more, at least 80% for 5%, at most 1 false flag per 100 node-tests, culprit found within 3 rounds, SLA engine 100% match with independent references, passive agent under 1% of one CPU core and 200 MB RAM.
 
+The kit for this proof is in the repository since 0.3: the fault injector, the trial planner and scorer, the overhead meter and the independent SLA reference implementation. [Running the proof of value](proof-of-value.md) is the runbook.
+
 ## Build milestones
 
 | Version | Scope |
 | --- | --- |
 | 0.1 | SLA engine, evidence log, XID agent, Slurm watcher, acceptance harness, examples |
-| 0.2 (this) | Heartbeats and gap detection; tenant-side probe and provider/tenant corroboration; AMD collector (amdgpu kernel messages, RAS counters) and AMD acceptance runs; signed evidence bundles; engine reads YAML specs directly; per-node keys by default, with a keyring of owners, roles and node bindings |
-| 0.3 | Hosted ledger service (PostgreSQL + object storage), provider, customer and financier roles, co-signed monthly statements, daily Merkle-root exchange |
-| 0.4 | Consented financier feed for SLA insurers and lenders; contract-level allow-lists of event sources |
+| 0.2 | Heartbeats and gap detection; tenant-side probe and provider/tenant corroboration; AMD collector (amdgpu kernel messages, RAS counters) and AMD acceptance runs; signed evidence bundles; engine reads YAML specs directly; per-node keys by default, with a keyring of owners, roles and node bindings |
+| 0.3 (this) | Hosted ledger service with provider, customer, financier and auditor roles (file-backed); co-signed monthly statements; daily witness checkpoints and party-signed checkpoints (the Merkle-root exchange); contract reconcile rules that say whose clock wins; the 0.4 items below, brought forward; the proof-of-value kit |
+| 0.4 | ~~Consented financier feed for SLA insurers and lenders; contract-level allow-lists of event sources~~ shipped in 0.3. Next: PostgreSQL and object-storage backends for the ledger, for operators hosting many contracts; results from the technical proof |
+| Later | GPU and TPM host attestation for agents and probes; hardware-backed node keys; single sign-on and rate limiting for the ledger; a self-hosted bundle for sovereign or air-gapped sites |
 
 ## Deliberately not planned
 
