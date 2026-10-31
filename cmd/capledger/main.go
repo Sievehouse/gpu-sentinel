@@ -1,6 +1,6 @@
-// Command capledger is the Capacity Ledger command-line tool: the provider
-// agent, the tenant probe, the SLA engine, evidence logs, keyrings and
-// signed evidence bundles in one static binary.
+// Command capledger is the GPU Sentinel command-line tool: the provider
+// agent, the tenant probe, the SLA engine, evidence logs, keyrings, signed
+// evidence bundles and the hosted ledger in one static binary.
 package main
 
 import (
@@ -52,6 +52,17 @@ Evidence
   bundle create     pack files into a signed evidence bundle (.tar.gz)
   bundle verify     verify a bundle and optionally extract it
 
+Ledger (one hosted ledger per contract)
+  ledger serve      run the ledger: logs, witness checkpoints, statements, consents, feed
+  ledger token      create a party's bearer token and the hash for the configuration
+  ledger push       push evidence logs; only entries the ledger does not hold yet
+  ledger pull       fetch logs from the ledger, extending local copies
+  ledger checkpoint fetch, or ask for, the witness's signed checkpoint of every log
+  ledger publish    upload a statement and its signatures
+  ledger consent    grant or revoke a financier's access to the feed
+  ledger feed       read the feed: statements, signatures and checkpoints, as files
+  ledger status     show logs, the latest checkpoint and co-signing status
+
 Keys
   keygen            create an Ed25519 signing key pair
   keyring add       trust a public key: owner, role, nodes it may speak for, validity
@@ -90,6 +101,15 @@ var commands = map[string]commandFunc{
 	"evidence checkpoint": cmdEvidenceCheckpoint,
 	"bundle create":       cmdBundleCreate,
 	"bundle verify":       cmdBundleVerify,
+	"ledger serve":        cmdLedgerServe,
+	"ledger token":        cmdLedgerToken,
+	"ledger push":         cmdLedgerPush,
+	"ledger pull":         cmdLedgerPull,
+	"ledger checkpoint":   cmdLedgerCheckpoint,
+	"ledger publish":      cmdLedgerPublish,
+	"ledger consent":      cmdLedgerConsent,
+	"ledger feed":         cmdLedgerFeed,
+	"ledger status":       cmdLedgerStatus,
 	"keygen":              cmdKeygen,
 	"keyring add":         cmdKeyringAdd,
 	"keyring import":      cmdKeyringImport,
