@@ -1,6 +1,25 @@
 # Changelog
 
-All notable changes to Capacity Ledger. Before version 1.0, minor versions may extend formats; every such change is listed here, and existing logs, statements and contracts keep working.
+All notable changes to GPU Sentinel (called Capacity Ledger until 0.2). Before version 1.0, minor versions may extend formats; every such change is listed here, and existing logs, statements and contracts keep working.
+
+## 0.4.0 (2026-11-01)
+
+### Added
+
+- **Kubernetes and NVSentinel.** `capledger watch kubernetes` turns Kubernetes node health into signed down, up and degraded events: a `Ready` condition that is not `True`, health conditions such as those of NVIDIA NVSentinel and node-problem-detector (`--down-condition '*'`), taints, cordons and fewer allocatable GPUs than expected. Events are dated by the condition's own transition time, contract nodes missing from the cluster count as down, and the watcher resumes from its own log after a restart. It reads nodes with the pod's service account, with kubectl, from an API server URL or from a saved `kubectl get nodes -o json` file (`--at` replays saved views). `deploy/kubernetes/node-watcher.yaml` runs it in the cluster with read-only access; `examples/kubernetes/` holds two saved views; [docs/kubernetes.md](docs/kubernetes.md) explains the rules.
+- **Redaction.** `capledger agent --redact` removes process names and ids, which can identify a customer's jobs, from recorded kernel lines; `xid parse --redact` shows what would be recorded. Classification uses the original line, so the same events come out, and redacted observations carry `"redacted": true`.
+- **One ledger, several contracts.** `ledger serve --config-dir DIR` (or `--config` given more than once) hosts several contracts, each with its own configuration, tokens, data directory and API under `/c/CONTRACT`. A configuration's new optional `keyring` field gives the contract its own keyring. SIGHUP adds and removes contracts; each checkpoint names its contract.
+- **Windows.** `scripts/demo.ps1` runs the end-to-end demo in Windows PowerShell 5.1 or PowerShell 7, and CI runs the Go tests and that demo on Windows.
+
+### Changed
+
+- The SLA engine is unchanged (still 0.3.0): every statement keeps its hash.
+- With a single `--config`, `ledger serve` behaves as before; `--keyring` is now needed only for configurations that name no keyring of their own.
+
+### Upgrading from 0.3
+
+- Nothing changes for existing logs, statements, contracts and ledgers. To host more contracts on one ledger, move the configurations into one directory, give each a `keyring`, and point the parties of each contract at `https://HOST/c/CONTRACT`. A ledger started with `--config-dir` keeps each contract's data under `DATA/contracts/CONTRACT`, so move an existing single-contract data directory there first.
+- To admit the Kubernetes watcher's events under a contract with `sources`, list the role `provider-integration` (or the source `kubernetes-node-watcher`) for the provider.
 
 ## 0.3.0 (2026-10-31)
 
