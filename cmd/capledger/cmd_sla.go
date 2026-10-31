@@ -6,9 +6,11 @@ import (
 	"io"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/Sievehouse/gpu-sentinel/internal/contract"
 	"github.com/Sievehouse/gpu-sentinel/internal/events"
+	"github.com/Sievehouse/gpu-sentinel/internal/keyring"
 	"github.com/Sievehouse/gpu-sentinel/internal/sla"
 )
 
@@ -75,41 +77,153 @@ func cmdSLAVerify(args []string, s streams) error {
 	fs := newFlags("sla verify", s)
 	stmtPath := fs.String("statement", "", "statement JSON to check")
 	contractPath := fs.String("contract", "", "contract spec; with --events, replay the computation")
-	var eventPaths stringList
+	var eventPaths, sigPaths stringList
 	fs.Var(&eventPaths, "events", "events file; repeat for several files")
+	fs.Var(&sigPaths, "signature", "statement signature (from sla sign); repeat for several parties")
+	keyringPath := fs.String("keyring", "", "keyring whose roles say who may sign as which party (needed with --signature)")
+	require := fs.String("require", "", "parties that must all have accepted, comma-separated, e.g. provider,customer")
 	if err := parseFlags(fs, args); err != nil {
 		return err
 	}
 	if err := required("statement", *stmtPath); err != nil {
 		return err
 	}
+	parties := splitList(*require)
+	if (len(sigPaths) > 0 || len(parties) > 0) && *keyringPath == "" {
+		return usagef("--signature and --require need --keyring: the keyring says which key may sign as which party")
+	}
 	st, err := sla.ReadStatement(*stmtPath)
 	if err != nil {
 		return err
 	}
-	if *contractPath == "" && len(eventPaths) == 0 {
+	switch {
+	case *contractPath == "" && len(eventPaths) == 0:
 		if err := st.CheckSeal(); err != nil {
 			return codedError{1, err.Error()}
 		}
-		fmt.Fprintf(s.out, "seal OK: %s\n(pass --contract and --events to replay the computation as well)\n", st.StatementSHA256)
+		fmt.Fprintf(s.out, "seal OK: %s\n", st.StatementSHA256)
+		if len(sigPaths) == 0 && len(parties) == 0 {
+			fmt.Fprintln(s.out, "(pass --contract and --events to replay the computation as well)")
+		}
+	case *contractPath == "" || len(eventPaths) == 0:
+		return usagef("replay needs both --contract and --events")
+	default:
+		spec, err := contract.Load(*contractPath)
+		if err != nil {
+			return err
+		}
+		evs, err := loadEvents(eventPaths)
+		if err != nil {
+			return err
+		}
+		if err := sla.Replay(spec, evs, st); err != nil {
+			return codedError{1, "replay failed: " + err.Error()}
+		}
+		fmt.Fprintf(s.out, "replay OK: same inputs, same statement %s (engine semantics %s)\n", st.StatementSHA256, st.EngineVersion)
+	}
+	if len(sigPaths) == 0 && len(parties) == 0 {
 		return nil
 	}
-	if *contractPath == "" || len(eventPaths) == 0 {
-		return usagef("replay needs both --contract and --events")
-	}
-	spec, err := contract.Load(*contractPath)
+	kr, err := keyring.Load(*keyringPath)
 	if err != nil {
 		return err
 	}
-	evs, err := loadEvents(eventPaths)
-	if err != nil {
-		return err
+	sigs := make([]*sla.Signature, 0, len(sigPaths))
+	for _, p := range sigPaths {
+		sg, err := sla.ReadSignature(p)
+		if err != nil {
+			return err
+		}
+		sigs = append(sigs, sg)
 	}
-	if err := sla.Replay(spec, evs, st); err != nil {
-		return codedError{1, "replay failed: " + err.Error()}
+	rep := sla.CheckCoSigned(st, sigs, sigPaths, kr.SignerAt, parties)
+	for _, r := range rep.Signatures {
+		status := "OK"
+		if !r.Valid {
+			status = "INVALID: " + r.Problem
+		}
+		note := ""
+		if r.Note != "" {
+			note = " \"" + r.Note + "\""
+		}
+		fmt.Fprintf(s.out, "%-10s %-8s key %s at %s%s  %s\n", r.Party, r.Decision, r.KeyID, r.SignedAt, note, status)
 	}
-	fmt.Fprintf(s.out, "replay OK: same inputs, same statement %s (engine semantics %s)\n", st.StatementSHA256, st.EngineVersion)
+	if len(parties) > 0 {
+		fmt.Fprintf(s.out, "required %s: accepted by %s; disputed by %s; missing %s\n", strings.Join(parties, ", "),
+			orNone(rep.AcceptedBy), orNone(rep.DisputedBy), orNone(rep.Missing))
+	}
+	if !rep.OK {
+		return codedError{1, "statement is not co-signed as required"}
+	}
+	if len(parties) > 0 {
+		fmt.Fprintf(s.out, "co-signed: every required party accepted statement %s\n", st.StatementSHA256)
+	}
 	return nil
+}
+
+func cmdSLASign(args []string, s streams) error {
+	fs := newFlags("sla sign", s)
+	stmtPath := fs.String("statement", "", "sealed statement JSON to sign")
+	party := fs.String("party", "", "the party you sign for; must be your key's keyring role: provider, customer, financier ...")
+	decision := fs.String("decision", sla.DecisionAccept, "accept or dispute")
+	note := fs.String("note", "", "what is disputed, or any remark (required for a dispute)")
+	keyPath := fs.String("key", "", "private signing key (PEM)")
+	keyDir := fs.String("key-dir", "", "directory holding the party's signing key (created on first use)")
+	out := fs.String("out", "", "signature file (default: STATEMENT.PARTY.sig.json next to the statement)")
+	if err := parseFlags(fs, args); err != nil {
+		return err
+	}
+	if err := required("statement", *stmtPath, "party", *party); err != nil {
+		return err
+	}
+	st, err := sla.ReadStatement(*stmtPath)
+	if err != nil {
+		return err
+	}
+	priv, err := signingKey(*keyPath, *keyDir, s)
+	if err != nil {
+		return err
+	}
+	sg, err := sla.Sign(st, *party, *decision, *note, priv, time.Now())
+	if err != nil {
+		return err
+	}
+	if *out == "" {
+		*out = strings.TrimSuffix(*stmtPath, ".json") + "." + *party + ".sig.json"
+	}
+	b, err := json.MarshalIndent(sg, "", "  ")
+	if err != nil {
+		return err
+	}
+	if err := os.WriteFile(*out, append(b, '\n'), 0o644); err != nil {
+		return err
+	}
+	fmt.Fprintf(s.out, "signed statement %s as %s (%s) with key %s: %s\n", short(st.StatementSHA256), *party, *decision, sg.KeyID, *out)
+	return nil
+}
+
+func splitList(v string) []string {
+	var out []string
+	for _, p := range strings.Split(v, ",") {
+		if p = strings.TrimSpace(p); p != "" {
+			out = append(out, p)
+		}
+	}
+	return out
+}
+
+func orNone(v []string) string {
+	if len(v) == 0 {
+		return "none"
+	}
+	return strings.Join(v, ", ")
+}
+
+func short(h string) string {
+	if len(h) > 12 {
+		return h[:12]
+	}
+	return h
 }
 
 func cmdSLACorroborate(args []string, s streams) error {
