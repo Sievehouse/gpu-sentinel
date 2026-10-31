@@ -2,7 +2,7 @@
 <title id="t">GPU Sentinel</title>
 <desc id="d">GPU Sentinel: signed, replayable evidence of delivered GPU capacity. The example month shows 16 nodes: 11 up, 5 with counted downtime (gpu-003, 005, 011, 014, 016) and 2 with excluded time (gpu-010, 012); availability 99.7021%, 5% credit of $15,000.</desc>
 <rect x="0.5" y="0.5" width="1279.0" height="359.0" rx="12" fill="#1a1a19" stroke="#383835"/>
-<text x="64.0" y="92.0" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="14" font-weight="600" fill="#898781" text-anchor="start" letter-spacing="1.5">OPEN SOURCE  ·  APACHE-2.0  ·  PRE-ALPHA v0.2</text>
+<text x="64.0" y="92.0" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="14" font-weight="600" fill="#898781" text-anchor="start" letter-spacing="1.5">OPEN SOURCE  ·  APACHE-2.0  ·  PRE-ALPHA v0.3</text>
 <text x="60.0" y="168.0" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="76" font-weight="700" fill="#f0efec" text-anchor="start" letter-spacing="-1.5">GPU Sentinel</text>
 <text x="64.0" y="214.0" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="24" font-weight="400" fill="#c3c2b7" text-anchor="start">Signed, replayable evidence of the GPU capacity</text>
 <text x="64.0" y="246.0" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="24" font-weight="400" fill="#c3c2b7" text-anchor="start">a cluster actually delivered.</text>
