@@ -115,7 +115,10 @@ func trustOrSkip(noVerify bool, keyringPath string, pubs []string, s streams) (*
 	return trustFrom(keyringPath, pubs)
 }
 
-func eventsFromLogs(logs []logData) ([]events.Event, error) {
+// eventsFromLogs extracts the events from verified logs. Signer fields are
+// never taken from a payload: with kr set they are filled from the keyring
+// entry of the key that signed the evidence entry, otherwise left empty.
+func eventsFromLogs(logs []logData, kr *keyring.Keyring) ([]events.Event, error) {
 	var all []events.Event
 	for _, ld := range logs {
 		for _, e := range ld.entries {
@@ -128,6 +131,14 @@ func eventsFromLogs(logs []logData) ([]events.Event, error) {
 			}
 			if ev.Evidence == "" {
 				ev.Evidence = e.Hash
+			}
+			ev.SignerKey, ev.SignerRole = "", ""
+			if kr != nil {
+				k, ok := kr.Lookup(e.KeyID)
+				if !ok {
+					return nil, fmt.Errorf("%s seq %d: key %s is not in the keyring", ld.path, e.Seq, e.KeyID)
+				}
+				ev.SignerKey, ev.SignerRole = e.KeyID, k.Role
 			}
 			if err := ev.Normalize(); err != nil {
 				return nil, fmt.Errorf("%s seq %d: %w", ld.path, e.Seq, err)
@@ -195,9 +206,13 @@ func cmdEventsExport(args []string, s streams) error {
 	keyringPath := fs.String("keyring", "", "keyring of trusted keys, with node bindings and validity windows")
 	noVerify := fs.Bool("no-verify", false, "skip verification (never for contract use)")
 	derive := fs.Duration("derive-gaps", 0, "also export unmonitored time: heartbeat silences longer than this, e.g. 5m")
+	signers := fs.Bool("signers", false, "add signerKey and signerRole (the signing key's keyring role) to every event; needed for contracts whose sources list roles")
 	g := addGapFlags(fs)
 	if err := parseFlags(fs, args); err != nil {
 		return err
+	}
+	if *signers && *noVerify {
+		return usagef("--signers needs verification: drop --no-verify")
 	}
 	kr, err := trustOrSkip(*noVerify, *keyringPath, pubs, s)
 	if err != nil {
@@ -207,7 +222,11 @@ func cmdEventsExport(args []string, s streams) error {
 	if err != nil {
 		return err
 	}
-	all, err := eventsFromLogs(data)
+	var attest *keyring.Keyring
+	if *signers {
+		attest = kr
+	}
+	all, err := eventsFromLogs(data, attest)
 	if err != nil {
 		return err
 	}
