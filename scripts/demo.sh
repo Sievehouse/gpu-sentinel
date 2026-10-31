@@ -37,6 +37,15 @@ step "AMD: replay amdgpu kernel messages; the uncorrectable RAS error becomes a 
   --log "$WORK/evidence-mi355-02.jsonl" --key-dir "$WORK/keys/mi355-02"
 "$CL" events export --log "$WORK/evidence-mi355-02.jsonl" --pub "$WORK/keys/mi355-02/capledger.pub.pem"
 
+step "Redaction: process names and ids that could identify a customer's job never reach the log"
+"$CL" xid parse --file examples/samples/kern.log --redact | grep '"code":94'
+
+step "Kubernetes: two saved views of the cluster (an NVSentinel fault, a lost GPU, then the repair) become signed events"
+for view in 2026-10-03T0415:2026-10-03T04:15:00Z 2026-10-03T0645:2026-10-03T06:45:00Z; do
+  "$CL" watch kubernetes --from "examples/kubernetes/nodes-${view%%:*}.json" --at "${view#*:}" --once \
+    --down-condition '*' --expected-gpus 8 --log "$WORK/k8s-watcher.jsonl" --key-dir "$WORK/keys/k8s-watcher"
+done
+
 step "Heartbeats: a node that went silent for 27 minutes shows up as unmonitored time"
 HB="$WORK/evidence-gpu-001.jsonl"
 for t in 00:00 00:01 00:02 00:30 00:31; do
