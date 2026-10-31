@@ -34,7 +34,7 @@ GPU Sentinel gives a GPU provider, its customer and their financiers **one neutr
 <a id="status"></a>
 
 > [!NOTE]
-> **Pre-alpha (v0.3.0).** Everything here is implemented and tested on synthetic data. Nothing has been validated on production GPU clusters yet, and AMD support has not been run on AMD hardware. Example contracts are illustrative and are not legal advice.
+> **Pre-alpha (v0.4.0).** Everything here is implemented and tested on synthetic data. Nothing has been validated on production GPU clusters yet, and AMD support has not been run on AMD hardware. Example contracts are illustrative and are not legal advice.
 
 ## Why this exists
 
@@ -49,7 +49,7 @@ GPU Sentinel gives a GPU provider, its customer and their financiers **one neutr
 flowchart LR
   subgraph cluster["Inside the GPU cluster"]
     A["capledger agent<br/>XIDs, amdgpu, GPU count, heartbeats"] --> L[("signed evidence logs<br/>one key per node")]
-    W["Slurm watcher<br/>drain and resume"] --> L
+    W["Slurm or Kubernetes watcher<br/>drains, NotReady, NVSentinel"] --> L
     P["capledger probe<br/>in the customer's jobs"] --> T[("customer's signed log")]
     H["acceptance harness<br/>nccl-tests, DCGM, RVS, fio"] --> B["signed acceptance bundle"]
   end
@@ -202,19 +202,20 @@ When a 64-node all-reduce misses its floor, the harness finds the culprits by sp
 
 </details>
 
-## What is in v0.3
+## What is in v0.4
 
 | Component | Language | What it does | Status |
 | --- | --- | --- | --- |
 | `capledger sla compute / verify` | Go | Contract spec (YAML or JSON) + events → sealed SLA statement; source allow-lists and reconcile rules; independent replay | Unit, property and CLI tests; v0.1 and v0.2 hashes pinned; matched against an independent Python implementation on random months in CI |
 | `capledger sla sign`, `sla verify --require` | Go | Each party signs a statement (accept or dispute); co-signing checked against keyring roles | Forgery and tamper tests |
 | `capledger sla corroborate` | Go | Provider and tenant events for one contract → node-by-node agreement report | Worked example pinned by tests |
-| `capledger ledger …` | Go, stdlib only | Hosted ledger per contract: verified pushes, witness checkpoints, statements and signatures, consented financier feed; push, pull, publish, consent, feed | End-to-end tests and demo; file-backed |
+| `capledger ledger …` | Go, stdlib only | Hosted ledger for one contract or several (each with its own keyring, data and URL): verified pushes, witness checkpoints, statements and signatures, consented financier feed; push, pull, publish, consent, feed | End-to-end tests and demo; file-backed |
 | `capledger evidence checkpoint`, `verify --checkpoint` | Go | Signed log heads that catch truncated or rewritten history | Rewrite and truncation tests |
 | `capledger evidence / events / keyring` | Go | Ed25519-signed, hash-chained logs with a Merkle root; per-node keys; keyrings with owners, roles, node bindings and validity windows; heartbeat gap detection | Tamper, binding and gap tests |
 | `capledger bundle` | Go | Signed `.tar.gz` evidence bundles; streaming verification; safe extraction | Tamper tests and fuzzing |
-| `capledger agent` | Go, stdlib only | Kernel log → NVIDIA XID/SXID and AMD amdgpu observations; AMD RAS counters; GPU count; heartbeats → signed events | Tested on sample logs and a fake sysfs, not yet on GPU hosts |
+| `capledger agent` | Go, stdlib only | Kernel log → NVIDIA XID/SXID and AMD amdgpu observations; AMD RAS counters; GPU count; heartbeats → signed events; optional redaction of process names and ids | Tested on sample logs and a fake sysfs, not yet on GPU hosts |
 | `capledger probe` | Go, stdlib only | Tenant side: GPU visibility and a benchmark floor with hysteresis → the customer's own signed events and heartbeats | Tested with simulated tool output |
+| `capledger watch kubernetes` | Go, stdlib only | Kubernetes node health (Ready, NVIDIA NVSentinel and node-problem-detector conditions, taints, allocatable GPUs) → signed down, up and degraded events; resumes from its own log | Tested on saved `kubectl` views and a fake API server, not yet on a live cluster |
 | `deploy/slurm/slurm-state-watcher.sh` | Bash | Slurm drain and resume → signed down and up events | Tested against a fake `sinfo` |
 | `capledger-harness plan / run / report` | Python | Acceptance plan (audit, DCGM or RVS, RDMA, NCCL or RCCL, burn-in, storage), runner, per-node verdicts | Tested with simulated tool output |
 | `capledger-harness localize-sim / outliers` | Python | Group-testing fault localisation with a chosen fan-out; slow-node detection against peers | Tested in simulation |
@@ -234,6 +235,15 @@ python3 -m venv .venv && . .venv/bin/activate
 pip install -e "harness[dev]"           # capledger-harness
 make test                               # Go and Python tests
 ./scripts/demo.sh                       # end-to-end on synthetic data, a few seconds
+```
+
+On Windows, in PowerShell:
+
+```powershell
+git clone https://github.com/Sievehouse/gpu-sentinel.git; cd gpu-sentinel
+go build -o capledger.exe ./cmd/capledger
+go test ./...
+powershell -ExecutionPolicy Bypass -File scripts\demo.ps1   # the same demo
 ```
 
 ### 1. Compute an SLA statement and replay it
@@ -264,7 +274,15 @@ make test                               # Go and Python tests
 ./bin/capledger events export   --log evidence-gpu-003.jsonl --keyring keyring.json --derive-gaps 5m > events.jsonl
 ```
 
-`--derive-gaps` turns silences in the heartbeats into unmonitored time, which every statement reports. For a monthly statement, export all nodes' logs together with `--period 2026-10 --contract …`, so that a node that sent no heartbeat at all is flagged too. The agent only reads: it never resets GPUs, drains nodes or touches the scheduler. On AMD hosts add `--vendor amd` ([AMD GPUs](docs/amd-gpus.md)).
+`--derive-gaps` turns silences in the heartbeats into unmonitored time, which every statement reports. For a monthly statement, export all nodes' logs together with `--period 2026-10 --contract …`, so that a node that sent no heartbeat at all is flagged too. The agent only reads: it never resets GPUs, drains nodes or touches the scheduler. On AMD hosts add `--vendor amd` ([AMD GPUs](docs/amd-gpus.md)); add `--redact` to keep process names and ids, which can identify a customer's jobs, out of the log.
+
+On Kubernetes, the node watcher records what the control plane says, including NVIDIA NVSentinel's health conditions ([Kubernetes and NVSentinel](docs/kubernetes.md)):
+
+```bash
+./bin/capledger watch kubernetes --down-condition '*' --expected-gpus 8 --contract contract.yaml \
+  --log k8s-events.jsonl --key-dir keys/k8s-watcher
+#   2026-10-03T04:12:00Z gpu-003 down k8s:NotReady:GpuHealthCheckFailed+k8s:SysLogsXIDError:79
+```
 
 ### 3. Probe from the customer's side and compare
 
@@ -366,6 +384,7 @@ The [ledger guide](docs/ledger-service.md) covers setting one up, day-to-day use
 | [SLA spec](docs/sla-spec.md) | Contract format, every rule, worked examples by hand |
 | [Keys and keyrings](docs/keys-and-keyring.md) | Per-node keys, enrolment, rotation |
 | [Tenant probe](docs/tenant-probe.md) | Running the probe and reading a corroboration report |
+| [Kubernetes and NVSentinel](docs/kubernetes.md) | The node watcher: which node states count, rules, deployment |
 | [AMD GPUs](docs/amd-gpus.md) | amdgpu messages, RAS counters, RVS and rccl-tests |
 | [Acceptance tests](docs/acceptance-tests.md) | Stages, criteria and fault localisation |
 | [Evidence formats](docs/evidence-format.md) | Log entries, bundles, checkpoints, signatures and consents, byte for byte |
@@ -378,7 +397,7 @@ The [ledger guide](docs/ledger-service.md) covers setting one up, day-to-day use
 
 ```text
 gpu-sentinel/
-├── cmd/capledger/            CLI, one file per area: agent, probe, sla, evidence, bundle, keys, ledger
+├── cmd/capledger/            CLI, one file per area: agent, probe, watch, sla, evidence, bundle, keys, ledger
 ├── internal/
 │   ├── agent/                kernel-log follower, fault handling, GPU count, heartbeats
 │   ├── bundle/               signed evidence bundles
@@ -388,18 +407,19 @@ gpu-sentinel/
 │   ├── evidence/             signed hash-chained log, keys, announcements, Merkle root, checkpoints
 │   ├── gaps/                 heartbeat silences → unmonitored time
 │   ├── interval/             exact interval-set arithmetic
+│   ├── k8s/                  Kubernetes node health → events: rules, watcher, API and kubectl sources
 │   ├── keyring/              trusted keys: owners, roles, node bindings, validity
 │   ├── ledger/               hosted ledger: configuration, file store, HTTP API, client, consents
 │   ├── probe/                tenant-side GPU visibility and benchmark probe
 │   ├── sla/                  SLA engine, reconcile rules, sealed statements, signatures, corroboration
-│   ├── xid/                  NVIDIA XID/SXID and AMD amdgpu parsing, RAS counters, policy
+│   ├── xid/                  NVIDIA XID/SXID and AMD amdgpu parsing, RAS counters, policy, redaction
 │   └── yamlite/              strict YAML subset reader for contracts
 ├── harness/                  Python acceptance harness, proof-of-value kit, SLA reference implementation
-├── examples/                 contracts, events, inventories, criteria, policies, sample tool output
-├── deploy/                   agent DaemonSet, tenant probe job, ledger (systemd, StatefulSet), Dockerfile, Slurm
+├── examples/                 contracts, events, Kubernetes node views, inventories, criteria, policies, sample tool output
+├── deploy/                   agent DaemonSet, node watcher, tenant probe job, ledger (systemd, StatefulSet), Dockerfile, Slurm
 ├── docs/                     architecture, spec, keys, probe, AMD, tests, ledger, proof, formats, threats, roadmap
 │   └── images/               README images (regenerate with scripts/readme_images.py)
-└── scripts/                  demo.sh, rename-module.sh, readme_images.py
+└── scripts/                  demo.sh, demo.ps1 (Windows), rename-module.sh, readme_images.py
 ```
 
 </details>
@@ -421,6 +441,9 @@ timeline
   v0.3 (Oct 2026) : Hosted ledger with provider, customer and financier roles
                   : Co-signed statements, witness checkpoints, consented feed
                   : Reconcile rules, source allow-lists, proof-of-value kit
+  v0.4 (Nov 2026) : Kubernetes and NVSentinel node watcher
+                  : Redaction, one ledger for several contracts
+                  : Windows demo and CI
   Next            : The technical proof on rented clusters
                   : PostgreSQL and object-storage backends
                   : Host attestation, hardware-backed keys
