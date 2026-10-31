@@ -26,6 +26,9 @@ type Observation struct {
 	Message string `json:"message"`
 	TS      string `json:"ts,omitempty"` // RFC 3339, when the log line carried a timestamp
 	Raw     string `json:"raw,omitempty"`
+	// Redacted is set when process names and ids were removed from Message
+	// and Raw before recording (agent --redact).
+	Redacted bool `json:"redacted,omitempty"`
 }
 
 var (
