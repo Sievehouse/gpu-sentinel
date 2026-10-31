@@ -156,11 +156,20 @@ func ReadStatement(path string) (*Statement, error) {
 	if err != nil {
 		return nil, err
 	}
+	s, err := DecodeStatement(b)
+	if err != nil {
+		return nil, fmt.Errorf("%s: %w", path, err)
+	}
+	return s, nil
+}
+
+// DecodeStatement parses a statement document, rejecting unknown fields.
+func DecodeStatement(b []byte) (*Statement, error) {
 	dec := json.NewDecoder(bytes.NewReader(b))
 	dec.DisallowUnknownFields()
 	var s Statement
 	if err := dec.Decode(&s); err != nil {
-		return nil, fmt.Errorf("%s: %w", path, err)
+		return nil, err
 	}
 	return &s, nil
 }
