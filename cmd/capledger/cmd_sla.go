@@ -5,8 +5,10 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strings"
 
 	"github.com/Sievehouse/gpu-sentinel/internal/contract"
+	"github.com/Sievehouse/gpu-sentinel/internal/events"
 	"github.com/Sievehouse/gpu-sentinel/internal/sla"
 )
 
@@ -113,9 +115,10 @@ func cmdSLAVerify(args []string, s streams) error {
 func cmdSLACorroborate(args []string, s streams) error {
 	fs := newFlags("sla corroborate", s)
 	contractPath := fs.String("contract", "", "contract spec (YAML or JSON)")
-	var aPaths, bPaths stringList
+	var aPaths, bPaths, bothPaths stringList
 	fs.Var(&aPaths, "events-a", "events recorded by side A (usually the provider); repeat for several files")
 	fs.Var(&bPaths, "events-b", "events recorded by side B (usually the tenant probe); repeat for several files")
+	fs.Var(&bothPaths, "events", "both parties' events in one set, split by the contract's sources (instead of --events-a and --events-b)")
 	labelA := fs.String("label-a", "provider", "name of side A")
 	labelB := fs.String("label-b", "tenant", "name of side B")
 	period := fs.String("period", "", "calendar month in UTC, e.g. 2026-10")
@@ -132,8 +135,12 @@ func cmdSLACorroborate(args []string, s streams) error {
 	if err := checkFormat(*format); err != nil {
 		return err
 	}
-	if len(aPaths) == 0 || len(bPaths) == 0 {
-		return usagef("--events-a and --events-b are both required")
+	split := len(bothPaths) > 0
+	switch {
+	case split && (len(aPaths) > 0 || len(bPaths) > 0):
+		return usagef("give --events, or --events-a and --events-b, not both")
+	case !split && (len(aPaths) == 0 || len(bPaths) == 0):
+		return usagef("--events-a and --events-b are both required (or --events with a contract that lists sources)")
 	}
 	p, err := parsePeriod(*period, *start, *end)
 	if err != nil {
@@ -143,13 +150,23 @@ func cmdSLACorroborate(args []string, s streams) error {
 	if err != nil {
 		return err
 	}
-	evsA, err := loadEvents(aPaths)
-	if err != nil {
-		return fmt.Errorf("%s: %w", *labelA, err)
-	}
-	evsB, err := loadEvents(bPaths)
-	if err != nil {
-		return fmt.Errorf("%s: %w", *labelB, err)
+	var evsA, evsB []events.Event
+	if split {
+		all, err := loadEvents(bothPaths)
+		if err != nil {
+			return err
+		}
+		if evsA, evsB, err = sla.SplitBySide(spec, all); err != nil {
+			return err
+		}
+		*labelA, *labelB = contract.SideProvider, contract.SideTenant
+	} else {
+		if evsA, err = loadEvents(aPaths); err != nil {
+			return fmt.Errorf("%s: %w", *labelA, err)
+		}
+		if evsB, err = loadEvents(bPaths); err != nil {
+			return fmt.Errorf("%s: %w", *labelB, err)
+		}
 	}
 	c, err := sla.Corroborate(spec, evsA, evsB, *labelA, *labelB, p)
 	if err != nil {
@@ -197,8 +214,34 @@ func cmdContractCheck(args []string, s streams) error {
 	fmt.Fprintf(s.out, "nodes       %d x %d GPUs, %d rack(s)\n", len(c.Cluster.Nodes), c.Cluster.GPUsPerNode, len(c.Cluster.Racks))
 	fmt.Fprintf(s.out, "credits     %d tier(s), monthly fee %s %s\n", len(c.Credits.Tiers), orDash(c.Credits.MonthlyFee), c.Credits.Currency)
 	fmt.Fprintf(s.out, "unmonitored %s\n", unmonitored)
+	if src := c.Sources; src != nil {
+		unlisted := src.Unlisted
+		if unlisted == "" {
+			unlisted = contract.UnlistedReject + " (default)"
+		}
+		fmt.Fprintf(s.out, "sources     provider %s; tenant %s; unlisted %s\n", sideText(src.Provider), sideText(src.Tenant), unlisted)
+	} else {
+		fmt.Fprintf(s.out, "sources     any (no sources block)\n")
+	}
+	if r := c.Measurement.Reconcile; r != nil {
+		fmt.Fprintf(s.out, "reconcile   count %s, start %s, end %s\n", r.Count, r.Start, r.End)
+	}
 	fmt.Fprintf(s.out, "digest      %s\n", digest)
 	return nil
+}
+
+func sideText(side *contract.SourceSide) string {
+	if side == nil {
+		return "-"
+	}
+	var parts []string
+	if len(side.Roles) > 0 {
+		parts = append(parts, "roles "+strings.Join(side.Roles, ","))
+	}
+	if len(side.Sources) > 0 {
+		parts = append(parts, "sources "+strings.Join(side.Sources, ","))
+	}
+	return strings.Join(parts, " + ")
 }
 
 func orDash(v string) string {
