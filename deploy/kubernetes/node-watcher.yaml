@@ -1,0 +1,103 @@
+# The Kubernetes node watcher (capledger watch kubernetes), as a single
+# replica with its own volume for its evidence log and signing key. It reads
+# node health from the API server with a read-only service account and
+# writes signed down/up events, the way the Slurm watcher does for Slurm.
+#
+# The rules below count a node as down when it is not Ready, when any health
+# condition (from NVIDIA NVSentinel or node-problem-detector) is True, or
+# when it has fewer than 8 allocatable GPUs. Edit them to match the contract.
+#
+# Enrol the watcher's key once its log exists; it speaks for every node:
+#   kubectl -n capledger cp capledger-node-watcher-0:/var/lib/capledger/k8s-events.jsonl k8s-events.jsonl
+#   capledger keyring import --keyring keyring.json --log k8s-events.jsonl \
+#     --owner "Example Neocloud" --role provider-integration --bind-nodes=false
+# Push the log to the ledger (capledger ledger push) or collect it with the
+# agents' logs. The image is the same static binary as the agent's
+# (deploy/docker/Dockerfile.agent).
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: capledger-node-watcher
+  namespace: capledger
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: capledger-node-watcher
+rules:
+  - apiGroups: [""]
+    resources: ["nodes"]
+    verbs: ["get", "list"]      # read-only: the watcher changes nothing
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: capledger-node-watcher
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: capledger-node-watcher
+subjects:
+  - kind: ServiceAccount
+    name: capledger-node-watcher
+    namespace: capledger
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: capledger-node-watcher
+  namespace: capledger
+spec:
+  serviceName: capledger-node-watcher
+  replicas: 1                   # one writer per evidence log
+  selector:
+    matchLabels:
+      app: capledger-node-watcher
+  template:
+    metadata:
+      labels:
+        app: capledger-node-watcher
+    spec:
+      serviceAccountName: capledger-node-watcher
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532
+        runAsGroup: 65532
+        fsGroup: 65532
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: watcher
+          image: ghcr.io/sievehouse/gpu-sentinel-agent:0.4.0   # build with deploy/docker/Dockerfile.agent
+          args:
+            - watch
+            - kubernetes
+            - --from=in-cluster
+            - --selector=nvidia.com/gpu.present=true
+            - --down-condition=*
+            - --expected-gpus=8
+            - --interval=30s
+            - --log=/var/lib/capledger/k8s-events.jsonl
+            - --key-dir=/var/lib/capledger/watcher-keys
+          resources:
+            requests:
+              cpu: 10m
+              memory: 32Mi
+            limits:
+              memory: 256Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          volumeMounts:
+            - name: state
+              mountPath: /var/lib/capledger
+  volumeClaimTemplates:
+    - metadata:
+        name: state
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        resources:
+          requests:
+            storage: 1Gi
