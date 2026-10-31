@@ -59,6 +59,12 @@ type Event struct {
 	Source   string `json:"source,omitempty"`
 	Evidence string `json:"evidence,omitempty"`
 	Note     string `json:"note,omitempty"`
+	// Since 0.3: the key that signed the evidence entry this event came
+	// from, and that key's role in the verifier's keyring. Only
+	// "capledger events export --signers" sets them, after verifying the
+	// signature; contracts whose sources list keyring roles rely on them.
+	SignerKey  string `json:"signerKey,omitempty"`
+	SignerRole string `json:"signerRole,omitempty"`
 
 	unix      int64
 	notice    int64
