@@ -19,7 +19,7 @@ import (
 )
 
 // version is overridden at build time with -ldflags "-X main.version=...".
-var version = "0.3.0"
+var version = "0.4.0"
 
 func main() { os.Exit(run(os.Args[1:], os.Stdin, os.Stdout, os.Stderr)) }
 
@@ -33,6 +33,8 @@ Collect
                     GPU counts and AMD RAS counters; write signed evidence and heartbeats
   probe             tenant side: check that every rented GPU is visible (and, optionally,
                     a benchmark floor); write signed evidence and heartbeats
+  watch kubernetes  provider side: turn Kubernetes node health (Ready, NVSentinel and
+                    node-problem-detector conditions, taints, GPU counts) into signed events
 
 SLA
   sla compute       compute a sealed SLA statement from a contract and events
@@ -88,6 +90,7 @@ type commandFunc func(args []string, s streams) error
 var commands = map[string]commandFunc{
 	"agent":               cmdAgent,
 	"probe":               cmdProbe,
+	"watch kubernetes":    cmdWatchKubernetes,
 	"sla compute":         cmdSLACompute,
 	"sla verify":          cmdSLAVerify,
 	"sla sign":            cmdSLASign,
