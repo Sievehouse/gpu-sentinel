@@ -161,11 +161,20 @@ func ReadSignature(path string) (*Signature, error) {
 	if err != nil {
 		return nil, err
 	}
+	sg, err := DecodeSignature(b)
+	if err != nil {
+		return nil, fmt.Errorf("%s: %w", path, err)
+	}
+	return sg, nil
+}
+
+// DecodeSignature parses a signature document, rejecting unknown fields.
+func DecodeSignature(b []byte) (*Signature, error) {
 	dec := json.NewDecoder(bytes.NewReader(b))
 	dec.DisallowUnknownFields()
 	var sg Signature
 	if err := dec.Decode(&sg); err != nil {
-		return nil, fmt.Errorf("%s: %w", path, err)
+		return nil, err
 	}
 	return &sg, nil
 }
