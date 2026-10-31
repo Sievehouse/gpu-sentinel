@@ -28,12 +28,13 @@ GPU Sentinel gives a GPU provider, its customer and their financiers **one neutr
 | --- | --- | --- |
 | **At handover** | A signed acceptance bundle: the test plan, raw results and per-node verdicts under one signature | The customer, before the first invoice |
 | **Every month** | A sealed SLA statement that either party can recompute from the same signed events and get the same hash | Customer, insurer or lender, without trusting a dashboard |
-| **When views differ** | A corroboration report comparing the provider's record with the customer's own probe, node by node | Both parties, before anyone argues about credits |
+| **When views differ** | A corroboration report comparing the provider's record with the customer's own probe, node by node, and contract rules that say whose clock counts | Both parties, before anyone argues about credits |
+| **All month long** | A shared ledger both parties push their signed logs to, whose witness fixes everyone's history every day, and where each party signs the monthly statement | Both parties, and financiers once both consent |
 
 <a id="status"></a>
 
 > [!NOTE]
-> **Pre-alpha (v0.2.0).** Everything here is implemented and tested on synthetic data. Nothing has been validated on production GPU clusters yet, and AMD support has not been run on AMD hardware. Example contracts are illustrative and are not legal advice.
+> **Pre-alpha (v0.3.0).** Everything here is implemented and tested on synthetic data. Nothing has been validated on production GPU clusters yet, and AMD support has not been run on AMD hardware. Example contracts are illustrative and are not legal advice.
 
 ## Why this exists
 
@@ -52,17 +53,20 @@ flowchart LR
     P["capledger probe<br/>in the customer's jobs"] --> T[("customer's signed log")]
     H["acceptance harness<br/>nccl-tests, DCGM, RVS, fio"] --> B["signed acceptance bundle"]
   end
-  L -->|"verify against keyring,<br/>export, derive gaps"| E{{"SLA engine<br/>contract as code"}}
-  C["contract spec<br/>YAML or JSON"] --> E
+  L & T -->|"ledger push"| LG[("hosted ledger<br/>witness checkpoints")]
+  LG -->|"pull, verify against keyring,<br/>export, derive gaps"| E{{"SLA engine<br/>contract as code"}}
+  C["contract spec<br/>sources and reconcile rules"] --> E
   E --> S["sealed statement"]
+  S -->|"sla sign by both parties"| LG
   S -->|replay| V["customer, insurer or lender<br/>recomputes the same hash"]
-  T -->|corroborate| R["agreement report"]
-  L -->|corroborate| R
+  LG -->|"feed, after both consent"| F["financier"]
+  E -->|corroborate| R["agreement report"]
 ```
 
 1. **Collect.** Agents, probes, integrations and the harness write signed entries to per-source evidence logs, each with its own key. Every entry carries the hash of the previous one, so edits, deletions and reordering are detectable, and heartbeats make silence visible.
-2. **Compute.** The SLA engine replays availability events against the contract: minimum incident length, maintenance and customer-caused exclusions, a per-node exclusion cap, a rack rule for NVL72-style systems, unmonitored time and credit tiers. All arithmetic is exact; there is no floating point in the money path.
-3. **Prove.** The statement is sealed with a SHA-256 over its canonical JSON and fingerprints its inputs. Anyone with the contract and the signed events gets the same statement, and the customer's own record shows exactly where the two views differ.
+2. **Share.** Both parties push their logs to a ledger for the contract. It accepts only entries that verify against its keyring, and its witness key signs a checkpoint of every log every day, so no history can be rewritten later.
+3. **Compute.** The SLA engine replays availability events against the contract: minimum incident length, maintenance and customer-caused exclusions, a per-node exclusion cap, a rack rule for NVL72-style systems, unmonitored time, credit tiers, and whose clock counts when the provider and the customer recorded the same outage differently. All arithmetic is exact; there is no floating point in the money path.
+4. **Agree.** The statement is sealed with a SHA-256 over its canonical JSON and fingerprints its inputs. Anyone with the contract and the signed events gets the same statement; each party signs it (accept or dispute), and financiers read it once both parties consent.
 
 ### A month in the life of a contract
 
@@ -84,6 +88,8 @@ sequenceDiagram
   E-->>C: same hash, so the statement stands
   Pr->>E: the customer's own events
   E-->>C: corroboration: 93.63% agreed, 5 nodes to review
+  C->>E: both parties sign: accept (or dispute, with a note)
+  Note over C: a lender reads the co-signed statement from the ledger feed
 ```
 
 ### Evidence that can't be quietly edited
@@ -128,6 +134,28 @@ The customer runs `capledger probe` inside its own jobs and keeps its own signed
 </picture>
 
 Instead of a month of support tickets, the parties have five windows to look at. [docs/tenant-probe.md](docs/tenant-probe.md) explains each one.
+
+### Whose clock wins?
+
+Both records of the same outage are defensible: the provider's agent saw the fault a minute before the customer's job did, and the job saw the GPUs back a minute after the provider's health check. Version 0.3 lets the contract settle that before anyone compares:
+
+```yaml
+measurement:
+  reconcile:
+    count: either     # an outage counts if either party recorded it (or: both, provider, tenant)
+    start: provider   # it starts at the provider's first fault record (or: earliest, latest, tenant)
+    end: tenant       # and ends when the tenant's jobs see the node again
+sources:
+  provider: { roles: [provider-agent, provider-integration] }
+  tenant:   { roles: [tenant-probe] }
+```
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/images/clock-rules-dark.svg">
+  <img alt="gpu-003: the provider recorded 04:12 to 06:40, the tenant 04:13 to 06:41. Counting only what both saw gives 8,820 seconds; from the provider's first fault to the tenant's recovery gives 8,940 seconds." src="docs/images/clock-rules-light.svg" width="100%">
+</picture>
+
+Sources are matched by the keyring role of the key that signed each event, so neither party can pass its events off as the other's. Every rule is worked through by hand in the [SLA spec](docs/sla-spec.md#sources-and-reconcile-rules-which-clock-wins).
 
 ### Finding bad nodes fast
 
@@ -174,22 +202,26 @@ When a 64-node all-reduce misses its floor, the harness finds the culprits by sp
 
 </details>
 
-## What is in v0.2
+## What is in v0.3
 
 | Component | Language | What it does | Status |
 | --- | --- | --- | --- |
-| `capledger sla compute / verify` | Go | Contract spec (YAML or JSON) + events → sealed SLA statement; independent replay | Unit, property and CLI tests; v0.1 hashes pinned |
+| `capledger sla compute / verify` | Go | Contract spec (YAML or JSON) + events → sealed SLA statement; source allow-lists and reconcile rules; independent replay | Unit, property and CLI tests; v0.1 and v0.2 hashes pinned; matched against an independent Python implementation on random months in CI |
+| `capledger sla sign`, `sla verify --require` | Go | Each party signs a statement (accept or dispute); co-signing checked against keyring roles | Forgery and tamper tests |
 | `capledger sla corroborate` | Go | Provider and tenant events for one contract → node-by-node agreement report | Worked example pinned by tests |
+| `capledger ledger …` | Go, stdlib only | Hosted ledger per contract: verified pushes, witness checkpoints, statements and signatures, consented financier feed; push, pull, publish, consent, feed | End-to-end tests and demo; file-backed |
+| `capledger evidence checkpoint`, `verify --checkpoint` | Go | Signed log heads that catch truncated or rewritten history | Rewrite and truncation tests |
 | `capledger evidence / events / keyring` | Go | Ed25519-signed, hash-chained logs with a Merkle root; per-node keys; keyrings with owners, roles, node bindings and validity windows; heartbeat gap detection | Tamper, binding and gap tests |
 | `capledger bundle` | Go | Signed `.tar.gz` evidence bundles; streaming verification; safe extraction | Tamper tests and fuzzing |
 | `capledger agent` | Go, stdlib only | Kernel log → NVIDIA XID/SXID and AMD amdgpu observations; AMD RAS counters; GPU count; heartbeats → signed events | Tested on sample logs and a fake sysfs, not yet on GPU hosts |
 | `capledger probe` | Go, stdlib only | Tenant side: GPU visibility and a benchmark floor with hysteresis → the customer's own signed events and heartbeats | Tested with simulated tool output |
 | `deploy/slurm/slurm-state-watcher.sh` | Bash | Slurm drain and resume → signed down and up events | Tested against a fake `sinfo` |
 | `capledger-harness plan / run / report` | Python | Acceptance plan (audit, DCGM or RVS, RDMA, NCCL or RCCL, burn-in, storage), runner, per-node verdicts | Tested with simulated tool output |
-| `capledger-harness localize-sim / outliers` | Python | Group-testing fault localisation; slow-node detection against peers | Tested in simulation |
+| `capledger-harness localize-sim / outliers` | Python | Group-testing fault localisation with a chosen fan-out; slow-node detection against peers | Tested in simulation |
+| `capledger-harness pov-plan / pov-score`, `inject_fault.sh`, `agent_overhead.py` | Python, Bash | Proof-of-value kit: inject faults F1–F6 on test nodes and undo them, plan the trials, score against the roadmap's thresholds, measure agent overhead | Tested with fake tools; for rented test clusters only |
 | `harness/scripts/burnin.py`, `gemm_bench.py` | Python, PyTorch | Simultaneous GEMM and all-to-all burn-in; per-GPU GEMM benchmark for the probe | Reference code; not yet run on hardware |
 
-What changed since v0.1 is in the [changelog](CHANGELOG.md).
+What changed in each version is in the [changelog](CHANGELOG.md).
 
 ## Quickstart
 
@@ -291,6 +323,29 @@ capledger-harness localize-sim --nodes 64 --bad 2     # 2 bad nodes found in 23 
 
 For AMD Instinct clusters, set `vendor: amd` in the inventory ([`examples/inventory/mi300x-2-node.yaml`](examples/inventory/mi300x-2-node.yaml)).
 
+### 5. Agree on the month, through a ledger
+
+```bash
+# whose clock counts: version 2 of the example contract reconciles both parties' records
+./bin/capledger sla compute --contract examples/contracts/hgx-16-node-reconciled.yaml \
+  --events examples/events/hgx-16-node-2026-10-both.jsonl --period 2026-10 --format text   # 99.6946%
+
+# each party signs; the statement counts as agreed only when both accept
+./bin/capledger sla sign --statement statement.json --party customer --key-dir keys/customer-signer
+./bin/capledger sla verify --statement statement.json --keyring keyring.json --require provider,customer \
+  --signature statement.provider.sig.json --signature statement.customer.sig.json
+
+# one ledger per contract: push logs, fetch the witness checkpoint, publish, let a lender read
+./bin/capledger ledger serve --config ledger.json --keyring keyring.json --data data --key-dir witness
+./bin/capledger ledger push --log evidence-gpu-003.jsonl --server https://ledger.example.com --token-file neocloud.token
+./bin/capledger ledger checkpoint --out checkpoint.json --server … --token-file lab.token
+./bin/capledger evidence verify --keyring keyring.json --checkpoint checkpoint.json --log pulled/gpu-003.jsonl
+./bin/capledger ledger publish --statement statement.json --signature statement.customer.sig.json --server … --token-file lab.token
+./bin/capledger ledger consent --financier example-insurer --party customer --key-dir keys/customer-signer --server … --token-file lab.token
+```
+
+The [ledger guide](docs/ledger-service.md) covers setting one up, day-to-day use, the API and operations; `./scripts/demo.sh` runs all of it on one machine.
+
 ## Design principles
 
 | Principle | What it means |
@@ -313,7 +368,9 @@ For AMD Instinct clusters, set `vendor: amd` in the inventory ([`examples/invent
 | [Tenant probe](docs/tenant-probe.md) | Running the probe and reading a corroboration report |
 | [AMD GPUs](docs/amd-gpus.md) | amdgpu messages, RAS counters, RVS and rccl-tests |
 | [Acceptance tests](docs/acceptance-tests.md) | Stages, criteria and fault localisation |
-| [Evidence formats](docs/evidence-format.md) | Log entries, statements and bundles, byte for byte |
+| [Evidence formats](docs/evidence-format.md) | Log entries, bundles, checkpoints, signatures and consents, byte for byte |
+| [Ledger service](docs/ledger-service.md) | Running the ledger, roles, checkpoints, co-signing, financier feed, API |
+| [Proof of value](docs/proof-of-value.md) | Injecting faults on test clusters and scoring detection against the thresholds |
 | [Threat model](docs/threat-model.md) | What the evidence does and does not prove |
 
 <details>
@@ -321,25 +378,26 @@ For AMD Instinct clusters, set `vendor: amd` in the inventory ([`examples/invent
 
 ```text
 gpu-sentinel/
-├── cmd/capledger/            CLI, one file per area: agent, probe, sla, evidence, bundle, keys
+├── cmd/capledger/            CLI, one file per area: agent, probe, sla, evidence, bundle, keys, ledger
 ├── internal/
 │   ├── agent/                kernel-log follower, fault handling, GPU count, heartbeats
 │   ├── bundle/               signed evidence bundles
 │   ├── canonical/            deterministic JSON for hashing
 │   ├── contract/             contract SLA spec: load (YAML or JSON) and validate
 │   ├── events/               availability events: load, normalise, order
-│   ├── evidence/             signed hash-chained log, keys, announcements, Merkle root
+│   ├── evidence/             signed hash-chained log, keys, announcements, Merkle root, checkpoints
 │   ├── gaps/                 heartbeat silences → unmonitored time
 │   ├── interval/             exact interval-set arithmetic
 │   ├── keyring/              trusted keys: owners, roles, node bindings, validity
+│   ├── ledger/               hosted ledger: configuration, file store, HTTP API, client, consents
 │   ├── probe/                tenant-side GPU visibility and benchmark probe
-│   ├── sla/                  SLA engine, sealed statements, corroboration
+│   ├── sla/                  SLA engine, reconcile rules, sealed statements, signatures, corroboration
 │   ├── xid/                  NVIDIA XID/SXID and AMD amdgpu parsing, RAS counters, policy
 │   └── yamlite/              strict YAML subset reader for contracts
-├── harness/                  Python acceptance harness (capledger-harness)
+├── harness/                  Python acceptance harness, proof-of-value kit, SLA reference implementation
 ├── examples/                 contracts, events, inventories, criteria, policies, sample tool output
-├── deploy/                   Kubernetes DaemonSet and tenant probe job, Dockerfile, Slurm watcher and probe
-├── docs/                     architecture, spec, keys, probe, AMD, tests, formats, threats, roadmap
+├── deploy/                   agent DaemonSet, tenant probe job, ledger (systemd, StatefulSet), Dockerfile, Slurm
+├── docs/                     architecture, spec, keys, probe, AMD, tests, ledger, proof, formats, threats, roadmap
 │   └── images/               README images (regenerate with scripts/readme_images.py)
 └── scripts/                  demo.sh, rename-module.sh, readme_images.py
 ```
@@ -360,12 +418,15 @@ timeline
   v0.2 (Oct 2026) : Heartbeats and unmonitored time
                   : Tenant probe and corroboration
                   : AMD Instinct, signed bundles, YAML contracts, keyrings
-  v0.3 (next)     : Hosted multi-party ledger
-                  : Co-signed monthly statements
-                  : Daily Merkle-root exchange
+  v0.3 (Oct 2026) : Hosted ledger with provider, customer and financier roles
+                  : Co-signed statements, witness checkpoints, consented feed
+                  : Reconcile rules, source allow-lists, proof-of-value kit
+  Next            : The technical proof on rented clusters
+                  : PostgreSQL and object-storage backends
+                  : Host attestation, hardware-backed keys
 ```
 
-See [docs/roadmap.md](docs/roadmap.md), which also holds the 30-day validation plan this project is gated on.
+See [docs/roadmap.md](docs/roadmap.md), which also holds the 30-day validation plan this project is gated on. The next step is that proof, not more features.
 
 ## Contributing, security and licence
 
