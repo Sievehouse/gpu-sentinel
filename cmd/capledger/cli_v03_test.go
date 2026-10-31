@@ -96,3 +96,47 @@ func TestCoSigningCLI(t *testing.T) {
 	wantExit(t, 2, "sla", "verify", "--statement", stmt, "--signature", provSig)
 	wantExit(t, 1, "sla", "sign", "--statement", stmt, "--party", "customer", "--decision", "dispute", "--key-dir", filepath.Join(dir, "customer-signer"))
 }
+
+func TestCheckpointCLI(t *testing.T) {
+	dir := t.TempDir()
+	logPath := filepath.Join(dir, "gpu-003.jsonl")
+	keyDir := filepath.Join(dir, "agent")
+	kr := filepath.Join(dir, "keyring.json")
+	emit := func(typ, ts string) {
+		mustRun(t, "event", "emit", "--log", logPath, "--key-dir", keyDir, "--node", "gpu-003", "--type", typ, "--ts", ts)
+	}
+	emit("down", "2026-10-03T04:12:00Z")
+	emit("up", "2026-10-03T06:40:00Z")
+	mustRun(t, "keyring", "import", "--keyring", kr, "--log", logPath, "--owner", "Example Neocloud", "--role", "provider-agent")
+	// The customer's own key witnesses the provider's log.
+	mustRun(t, "keygen", "--out", filepath.Join(dir, "customer"))
+	mustRun(t, "keyring", "add", "--keyring", kr, "--pub", filepath.Join(dir, "customer", "capledger.pub.pem"), "--owner", "Example Lab", "--role", "customer")
+	cp := filepath.Join(dir, "cp.json")
+	out := mustRun(t, "evidence", "checkpoint", "--log", logPath, "--keyring", kr, "--key-dir", filepath.Join(dir, "customer"), "--note", "daily exchange", "--out", cp)
+	if !strings.Contains(out, "checkpoint of 1 log(s)") {
+		t.Fatalf("checkpoint: %s", out)
+	}
+	emit("down", "2026-10-09T10:00:00Z") // the log grows: still fine
+	out = mustRun(t, "evidence", "verify", "--log", logPath, "--keyring", kr, "--checkpoint", cp, "--format", "text")
+	if !strings.Contains(out, "signed by Example Lab (customer)") || !strings.Contains(out, "OK") {
+		t.Fatalf("verify:\n%s", out)
+	}
+	// The provider rewrites history with its own key: every signature still
+	// verifies, but the customer's checkpoint does not match any more.
+	os.Remove(logPath)
+	emit("down", "2026-10-03T05:30:00Z")
+	emit("up", "2026-10-03T06:40:00Z")
+	emit("down", "2026-10-09T10:00:00Z")
+	mustRun(t, "evidence", "verify", "--log", logPath, "--keyring", kr)
+	out = wantExit(t, 1, "evidence", "verify", "--log", logPath, "--keyring", kr, "--checkpoint", cp, "--format", "text")
+	if !strings.Contains(out, "history was rewritten") {
+		t.Fatalf("rewrite not caught:\n%s", out)
+	}
+	// A checkpoint signed by a key outside the keyring proves nothing.
+	mustRun(t, "keygen", "--out", filepath.Join(dir, "stranger"))
+	stranger := filepath.Join(dir, "stranger-cp.json")
+	mustRun(t, "evidence", "checkpoint", "--log", logPath, "--keyring", kr, "--key-dir", filepath.Join(dir, "stranger"), "--out", stranger)
+	if out := wantExit(t, 1, "evidence", "verify", "--log", logPath, "--keyring", kr, "--checkpoint", stranger); !strings.Contains(out, "not in the keyring") {
+		t.Fatalf("stranger accepted:\n%s", out)
+	}
+}
