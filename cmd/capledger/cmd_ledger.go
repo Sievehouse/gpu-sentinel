@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"context"
+	"crypto/ed25519"
 	"crypto/rand"
 	"encoding/base64"
 	"encoding/json"
@@ -14,6 +15,7 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
+	"sort"
 	"strings"
 	"syscall"
 	"text/tabwriter"
@@ -27,8 +29,10 @@ import (
 
 func cmdLedgerServe(args []string, s streams) error {
 	fs := newFlags("ledger serve", s)
-	configPath := fs.String("config", "", "ledger configuration (JSON): the contract and its parties")
-	keyringPath := fs.String("keyring", "", "keyring of every key whose evidence, signatures and consents the ledger accepts")
+	var configs stringList
+	fs.Var(&configs, "config", "ledger configuration (JSON): the contract and its parties; repeat to host several contracts")
+	configDir := fs.String("config-dir", "", "host every *.json configuration in this directory; SIGHUP re-reads it, so contracts can be added and removed")
+	keyringPath := fs.String("keyring", "", "keyring of every key whose evidence, signatures and consents the ledger accepts (for contracts whose configuration names no keyring of its own)")
 	dataDir := fs.String("data", "", "data directory (created if missing)")
 	keyDir := fs.String("key-dir", "", "the ledger's own witness key, which signs checkpoints (created on first use)")
 	listen := fs.String("listen", "127.0.0.1:8443", "address to listen on")
@@ -38,13 +42,23 @@ func cmdLedgerServe(args []string, s streams) error {
 	if err := parseFlags(fs, args); err != nil {
 		return err
 	}
-	if err := required("config", *configPath, "keyring", *keyringPath, "data", *dataDir, "key-dir", *keyDir); err != nil {
+	if err := required("data", *dataDir, "key-dir", *keyDir); err != nil {
 		return err
+	}
+	switch {
+	case len(configs) == 0 && *configDir == "":
+		return usagef("--config or --config-dir is required")
+	case len(configs) > 0 && *configDir != "":
+		return usagef("give --config or --config-dir, not both")
 	}
 	if (*tlsCert == "") != (*tlsKey == "") {
 		return usagef("give both --tls-cert and --tls-key, or neither")
 	}
-	cfg, kr, err := loadLedgerConfig(*configPath, *keyringPath)
+	multi := len(configs) > 1 || *configDir != ""
+	load := func() ([]ledger.HubContract, error) {
+		return loadLedgerContracts(configs, *configDir, *keyringPath)
+	}
+	contracts, err := load()
 	if err != nil {
 		return err
 	}
@@ -52,39 +66,32 @@ func cmdLedgerServe(args []string, s streams) error {
 	if err != nil {
 		return err
 	}
-	store, err := ledger.OpenStore(*dataDir)
-	if err != nil {
-		return err
-	}
-	srv, err := ledger.NewServer(store, cfg, kr, witness, s.err)
-	if err != nil {
-		return err
-	}
-	ln, err := net.Listen("tcp", *listen)
-	if err != nil {
-		return err
-	}
-	hs := &http.Server{Handler: srv.Handler(), ReadHeaderTimeout: 10 * time.Second}
-	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
-	defer stop()
-	hup := make(chan os.Signal, 1)
-	signal.Notify(hup, syscall.SIGHUP)
-	defer signal.Stop(hup)
-	go func() {
-		for range hup {
-			cfg, kr, err := loadLedgerConfig(*configPath, *keyringPath)
-			if err == nil {
-				err = srv.Reload(cfg, kr)
-			}
-			if err != nil {
-				fmt.Fprintf(s.err, "reload failed, keeping the old configuration: %v\n", err)
-				continue
-			}
-			fmt.Fprintf(s.err, "reloaded %s and %s (%d keys)\n", *configPath, *keyringPath, len(kr.Keys))
+
+	var handler http.Handler
+	var reload func() error
+	var checkpoint func()
+	if !multi {
+		c := contracts[0]
+		store, err := ledger.OpenStore(*dataDir)
+		if err != nil {
+			return err
 		}
-	}()
-	if *cpEvery > 0 {
-		go every(ctx, *cpEvery, func() {
+		srv, err := ledger.NewServer(store, c.Config, c.Keyring, witness, s.err)
+		if err != nil {
+			return err
+		}
+		handler = srv.Handler()
+		reload = func() error {
+			cs, err := load()
+			if err == nil {
+				err = srv.Reload(cs[0].Config, cs[0].Keyring)
+			}
+			if err == nil {
+				fmt.Fprintf(s.err, "reloaded the configuration of contract %s (%d keys)\n", cs[0].Config.Contract, len(cs[0].Keyring.Keys))
+			}
+			return err
+		}
+		checkpoint = func() {
 			res, err := srv.Checkpoint(false)
 			switch {
 			case err != nil:
@@ -92,7 +99,54 @@ func cmdLedgerServe(args []string, s streams) error {
 			case res != nil:
 				fmt.Fprintf(s.err, "checkpoint %s: %d log(s)\n", res.ID, len(res.Checkpoint.Logs))
 			}
-		})
+		}
+	} else {
+		hub := ledger.NewHub(*dataDir, witness, s.err)
+		if _, _, err := hub.Apply(contracts); err != nil {
+			return err
+		}
+		handler = hub.Handler()
+		reload = func() error {
+			cs, err := load()
+			if err != nil {
+				return err
+			}
+			added, removed, err := hub.Apply(cs)
+			if err == nil {
+				fmt.Fprintf(s.err, "reloaded %d contract(s); added %s; removed %s\n", len(cs), listOrNone(added), listOrNone(removed))
+			}
+			return err
+		}
+		checkpoint = func() {
+			res, err := hub.Checkpoint(false)
+			if err != nil {
+				fmt.Fprintf(s.err, "checkpoint failed: %v\n", err)
+			}
+			for _, id := range sortedKeys(res) {
+				fmt.Fprintf(s.err, "contract %s: checkpoint %s: %d log(s)\n", id, res[id].ID, len(res[id].Checkpoint.Logs))
+			}
+		}
+	}
+
+	ln, err := net.Listen("tcp", *listen)
+	if err != nil {
+		return err
+	}
+	hs := &http.Server{Handler: handler, ReadHeaderTimeout: 10 * time.Second}
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+	hup := make(chan os.Signal, 1)
+	signal.Notify(hup, syscall.SIGHUP)
+	defer signal.Stop(hup)
+	go func() {
+		for range hup {
+			if err := reload(); err != nil {
+				fmt.Fprintf(s.err, "reload failed, keeping the old configuration: %v\n", err)
+			}
+		}
+	}()
+	if *cpEvery > 0 {
+		go every(ctx, *cpEvery, checkpoint)
 	}
 	errc := make(chan error, 1)
 	go func() {
@@ -107,8 +161,18 @@ func cmdLedgerServe(args []string, s streams) error {
 		scheme = "http"
 		fmt.Fprintln(s.err, "warning: serving plain HTTP; put the ledger behind a TLS-terminating proxy")
 	}
-	fmt.Fprintf(s.err, "capledger ledger %s: contract %s, %d parties, witness key %s, %s://%s\n",
-		version, cfg.Contract, len(cfg.Parties), srv.WitnessKeyID(), scheme, ln.Addr())
+	witnessID := evidence.KeyID(witness.Public().(ed25519.PublicKey))
+	if !multi {
+		cfg := contracts[0].Config
+		fmt.Fprintf(s.err, "capledger ledger %s: contract %s, %d parties, witness key %s, %s://%s\n",
+			version, cfg.Contract, len(cfg.Parties), witnessID, scheme, ln.Addr())
+	} else {
+		fmt.Fprintf(s.err, "capledger ledger %s: %d contracts, witness key %s, %s://%s (each contract at /c/<contract>)\n",
+			version, len(contracts), witnessID, scheme, ln.Addr())
+		for _, c := range contracts {
+			fmt.Fprintf(s.err, "  %s://%s/c/%s  (%d parties)\n", scheme, ln.Addr(), c.Config.Contract, len(c.Config.Parties))
+		}
+	}
 	select {
 	case err := <-errc:
 		return err
@@ -119,16 +183,53 @@ func cmdLedgerServe(args []string, s streams) error {
 	return hs.Shutdown(shutdown)
 }
 
-func loadLedgerConfig(configPath, keyringPath string) (*ledger.Config, *keyring.Keyring, error) {
-	cfg, err := ledger.LoadConfig(configPath)
-	if err != nil {
-		return nil, nil, err
+func listOrNone(v []string) string {
+	if len(v) == 0 {
+		return "none"
 	}
-	kr, err := keyring.Load(keyringPath)
-	if err != nil {
-		return nil, nil, err
+	return strings.Join(v, ", ")
+}
+
+// loadLedgerContracts reads the configurations and their keyrings. A
+// configuration's own keyring wins over --keyring; each keyring file is read
+// once.
+func loadLedgerContracts(configs []string, configDir, keyringPath string) ([]ledger.HubContract, error) {
+	paths := []string(configs)
+	if configDir != "" {
+		found, err := filepath.Glob(filepath.Join(configDir, "*.json"))
+		if err != nil {
+			return nil, err
+		}
+		if len(found) == 0 {
+			return nil, fmt.Errorf("%s holds no *.json configurations", configDir)
+		}
+		sort.Strings(found)
+		paths = found
 	}
-	return cfg, kr, nil
+	keyrings := map[string]*keyring.Keyring{}
+	var out []ledger.HubContract
+	for _, p := range paths {
+		cfg, err := ledger.LoadConfig(p)
+		if err != nil {
+			return nil, err
+		}
+		krPath := cfg.KeyringPath()
+		if krPath == "" {
+			krPath = keyringPath
+		}
+		if krPath == "" {
+			return nil, usagef("%s: contract %s names no keyring; give --keyring or set \"keyring\" in its configuration", p, cfg.Contract)
+		}
+		kr, ok := keyrings[krPath]
+		if !ok {
+			if kr, err = keyring.Load(krPath); err != nil {
+				return nil, err
+			}
+			keyrings[krPath] = kr
+		}
+		out = append(out, ledger.HubContract{Config: cfg, Keyring: kr})
+	}
+	return out, nil
 }
 
 func cmdLedgerToken(args []string, s streams) error {
