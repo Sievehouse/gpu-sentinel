@@ -1,5 +1,5 @@
 // Package canonical produces the deterministic JSON encoding used for every
-// hash in Capacity Ledger: object keys sorted, no insignificant whitespace,
+// hash in GPU Sentinel: object keys sorted, no insignificant whitespace,
 // no HTML escaping, and numbers kept exactly as encoded.
 //
 // It implements the subset of RFC 8785 (JSON Canonicalization Scheme) that
