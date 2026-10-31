@@ -2,6 +2,7 @@ package contract
 
 import (
 	"bytes"
+	"encoding/json"
 	"os"
 	"strings"
 	"testing"
@@ -78,5 +79,72 @@ func TestRejectsInvalidContracts(t *testing.T) {
 	dup := strings.Replace(strings.Replace(strings.Replace(base, "%s", "", 3), `["a","b"]`, `["a","a"]`, 1), "%s", "", -1)
 	if _, err := Read(strings.NewReader(dup)); err == nil {
 		t.Error("duplicate node: expected an error")
+	}
+}
+
+func TestSourcesAndReconcileValidation(t *testing.T) {
+	base, err := Load("../../examples/contracts/hgx-16-node-reconciled.yaml")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !base.HasSources() || !base.Reconciles() {
+		t.Fatal("example should have sources and reconcile rules")
+	}
+	cases := []struct {
+		name string
+		edit func(c *Contract)
+		want string
+	}{
+		{"reconcile without sources", func(c *Contract) { c.Sources = nil }, "measurement.reconcile needs sources.provider and sources.tenant"},
+		{"tenant without reconcile", func(c *Contract) { c.Measurement.Reconcile = nil }, "measurement.reconcile is required when sources.tenant is set"},
+		{"bad count", func(c *Contract) { r := *c.Measurement.Reconcile; r.Count = "majority"; c.Measurement.Reconcile = &r }, "reconcile.count must be"},
+		{"bad end", func(c *Contract) { r := *c.Measurement.Reconcile; r.End = ""; c.Measurement.Reconcile = &r }, "reconcile.end must be"},
+		{"role on both sides", func(c *Contract) {
+			s := *c.Sources
+			ten := *s.Tenant
+			ten.Roles = []string{"tenant-probe", "provider-agent"}
+			s.Tenant = &ten
+			c.Sources = &s
+		}, `role "provider-agent" is listed for both`},
+		{"bad unlisted", func(c *Contract) { s := *c.Sources; s.Unlisted = "warn"; c.Sources = &s }, "sources.unlisted must be"},
+		{"empty side", func(c *Contract) { s := *c.Sources; s.Tenant = &SourceSide{}; c.Sources = &s }, "sources.tenant needs at least one role or source"},
+		{"no provider", func(c *Contract) { s := *c.Sources; s.Provider = nil; c.Sources = &s }, "sources.provider is required"},
+	}
+	for _, tc := range cases {
+		c := base.Contract
+		tc.edit(&c)
+		_, err := Parse(c)
+		if err == nil || !strings.Contains(err.Error(), tc.want) {
+			t.Errorf("%s: got %v, want %q", tc.name, err, tc.want)
+		}
+	}
+	// Allow-list only: a provider side and no reconcile rules is valid.
+	c := base.Contract
+	c.Measurement.Reconcile = nil
+	s := *c.Sources
+	s.Tenant = nil
+	c.Sources = &s
+	if _, err := Parse(c); err != nil {
+		t.Fatalf("allow-list only: %v", err)
+	}
+}
+
+func TestReconciledContractYAMLMatchesJSON(t *testing.T) {
+	spec, err := Load("../../examples/contracts/hgx-16-node-reconciled.yaml")
+	if err != nil {
+		t.Fatal(err)
+	}
+	b, err := json.Marshal(spec.Contract)
+	if err != nil {
+		t.Fatal(err)
+	}
+	again, err := Decode(b, "json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	d1, _ := spec.Digest()
+	d2, _ := again.Digest()
+	if d1 != d2 {
+		t.Fatalf("digests differ: %s %s", d1, d2)
 	}
 }
