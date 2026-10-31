@@ -47,7 +47,7 @@ func jsonLines(out string) []string {
 }
 
 func TestVersion(t *testing.T) {
-	if out := mustRun(t, "version"); !strings.Contains(out, "sla engine 0.2.0") {
+	if out := mustRun(t, "version"); !strings.Contains(out, "sla engine 0.3.0") {
 		t.Fatalf("version: %s", out)
 	}
 }
