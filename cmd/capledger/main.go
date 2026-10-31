@@ -36,7 +36,8 @@ Collect
 
 SLA
   sla compute       compute a sealed SLA statement from a contract and events
-  sla verify        check a statement's seal, or replay it from its inputs
+  sla verify        check a statement's seal, replay it, and check co-signatures
+  sla sign          sign a statement as one party: accept or dispute
   sla corroborate   compare the downtime two independent sources recorded
   contract check    validate a contract spec (YAML or JSON) and print its digest
 
@@ -76,6 +77,7 @@ var commands = map[string]commandFunc{
 	"probe":           cmdProbe,
 	"sla compute":     cmdSLACompute,
 	"sla verify":      cmdSLAVerify,
+	"sla sign":        cmdSLASign,
 	"sla corroborate": cmdSLACorroborate,
 	"contract check":  cmdContractCheck,
 	"event emit":      cmdEventEmit,
