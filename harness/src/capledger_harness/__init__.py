@@ -1,4 +1,4 @@
-"""Capacity Ledger acceptance harness.
+"""GPU Sentinel acceptance harness.
 
 Plans and runs cluster acceptance tests with proven open-source tools
 (nccl-tests, DCGM diagnostics, perftest, fio), parses their output, flags
