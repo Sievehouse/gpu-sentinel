@@ -1,0 +1,101 @@
+# The hosted ledger for one contract (capledger ledger serve), as a single
+# replica with its own volume. The image is the same static capledger binary
+# as the agent's (deploy/docker/Dockerfile.agent).
+#
+# Create the configuration and keyring first:
+#   kubectl create namespace capledger
+#   kubectl -n capledger create configmap capledger-ledger \
+#     --from-file=ledger.json --from-file=keyring.json
+# After enrolling a new key, update the ConfigMap and restart the pod (or
+# send it SIGHUP). Put TLS in front of the Service with your ingress.
+# Back up the volume: it holds the logs, statements, consents and the
+# witness key that signs checkpoints.
+apiVersion: v1
+kind: Service
+metadata:
+  name: capledger-ledger
+  namespace: capledger
+spec:
+  selector:
+    app: capledger-ledger
+  ports:
+    - name: http
+      port: 8443
+      targetPort: http
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: capledger-ledger
+  namespace: capledger
+spec:
+  serviceName: capledger-ledger
+  replicas: 1                   # one writer per data directory
+  selector:
+    matchLabels:
+      app: capledger-ledger
+  template:
+    metadata:
+      labels:
+        app: capledger-ledger
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532
+        runAsGroup: 65532
+        fsGroup: 65532
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: ledger
+          image: ghcr.io/sievehouse/gpu-sentinel-agent:0.3.0   # build with deploy/docker/Dockerfile.agent
+          args:
+            - ledger
+            - serve
+            - --config=/etc/capledger-ledger/ledger.json
+            - --keyring=/etc/capledger-ledger/keyring.json
+            - --data=/var/lib/capledger-ledger/data
+            - --key-dir=/var/lib/capledger-ledger/witness
+            - --listen=0.0.0.0:8443
+            - --checkpoint-every=24h
+          ports:
+            - name: http
+              containerPort: 8443
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            periodSeconds: 30
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              memory: 512Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          volumeMounts:
+            - name: config
+              mountPath: /etc/capledger-ledger
+              readOnly: true
+            - name: data
+              mountPath: /var/lib/capledger-ledger
+      volumes:
+        - name: config
+          configMap:
+            name: capledger-ledger
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        resources:
+          requests:
+            storage: 10Gi
