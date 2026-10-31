@@ -14,7 +14,7 @@ from .inventory import Inventory
 from .localize import simulate
 from .parsers.nccl import parse_nccl_output
 from .plan import STAGES, Plan, build_plan
-from .pov import load_trials, plan_trials, score, to_text
+from .pov import THRESHOLDS, load_trials, plan_trials, score, to_text
 from .report import Criteria, build_report, to_markdown
 from .runner import load_results, run_plan
 
@@ -61,7 +61,7 @@ def cmd_report(a: argparse.Namespace) -> int:
 
 
 def cmd_localize_sim(a: argparse.Namespace) -> int:
-    print(json.dumps(simulate(a.nodes, a.bad, a.degradation, a.noise, a.seed), indent=2))
+    print(json.dumps(simulate(a.nodes, a.bad, a.degradation, a.noise, a.seed, a.fanout), indent=2))
     return 0
 
 
@@ -110,7 +110,7 @@ def cmd_pov_plan(a: argparse.Namespace) -> int:
 
 def cmd_pov_score(a: argparse.Namespace) -> int:
     levels = ("review", "reject") if a.flag_level == "review" else ("reject",)
-    s = score(load_trials(a.trials, levels))
+    s = score(load_trials(a.trials, levels), max_rounds=a.max_rounds)
     if a.out:
         with open(a.out, "w", encoding="utf-8") as f:
             json.dump(s, f, indent=2)
@@ -152,6 +152,7 @@ def main(argv: list[str] | None = None) -> int:
     s.add_argument("--degradation", type=float, default=0.20)
     s.add_argument("--noise", type=float, default=0.015)
     s.add_argument("--seed", type=int, default=7)
+    s.add_argument("--fanout", type=int, default=2, help="parts a failing group is split into per round (more tests, fewer rounds)")
     s.set_defaults(fn=cmd_localize_sim)
 
     s = sub.add_parser("outliers", help="flag nodes slow against their peers")
@@ -180,6 +181,8 @@ def main(argv: list[str] | None = None) -> int:
     s.add_argument("--trials", required=True)
     s.add_argument("--flag-level", choices=("review", "reject"), default="review",
                    help="lowest verdict that counts as flagging a node (default: review)")
+    s.add_argument("--max-rounds", type=int, default=THRESHOLDS["max_localisation_rounds"],
+                   help="localisation rounds allowed (default: the roadmap's 3)")
     s.add_argument("--out", help="also write the score as JSON")
     s.set_defaults(fn=cmd_pov_score)
 
