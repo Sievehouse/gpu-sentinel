@@ -21,6 +21,13 @@
 // Unmonitored time (stretches with no heartbeat, derived from evidence logs)
 // is always reported. If the contract says "count-as-down", it is also
 // countable downtime and goes through steps 2 to 5 like any outage.
+//
+// Since 0.3 a contract may list its event sources by party. Events from
+// other sources are rejected (or ignored, if the contract says so). If the
+// contract also has reconcile rules, steps 1 and 2 run separately on the
+// provider's and the tenant's events, and the two parties' countable time is
+// combined episode by episode before the exclusions are applied: the rules
+// decide which episodes count and which party's clock starts and ends them.
 package sla
 
 import (
@@ -36,19 +43,21 @@ import (
 
 // EngineVersion is the version of this engine. Bump it whenever the
 // computation changes.
-const EngineVersion = "0.2.0"
+const EngineVersion = "0.3.0"
 
 // Semantics versions. A statement's engineVersion field records the oldest
 // semantics that reproduces it: inputs that use no 0.2 feature (unmonitored
-// time) give statements byte-identical to engine 0.1.0, so statements and
-// hashes published with v0.1 still replay.
+// time) give statements byte-identical to engine 0.1.0, and contracts
+// without sources give statements byte-identical to engine 0.2.0, so
+// statements and hashes published with older versions still replay.
 const (
 	Semantics010 = "0.1.0"
 	Semantics020 = "0.2.0"
+	Semantics030 = "0.3.0"
 )
 
 // Supported reports whether this engine can replay statements of semantics v.
-func Supported(v string) bool { return v == Semantics010 || v == Semantics020 }
+func Supported(v string) bool { return v == Semantics010 || v == Semantics020 || v == Semantics030 }
 
 // StatementKind identifies a statement document.
 const StatementKind = "SLAStatement"
@@ -69,6 +78,7 @@ func (p Period) Validate() error {
 
 type segment struct {
 	iv         interval.Interval
+	side       string // provider | tenant (only meaningful when reconciling)
 	kind       string // down | degraded | maintenance | unmonitored
 	causes     []string
 	ids        []string
@@ -90,11 +100,19 @@ type warnCounts struct {
 	unknownNodeTotal int
 	unmonEndWithout  int
 	dupUnmonitored   int
+	unlisted         map[string]int
+	unlistedTotal    int
 }
 
 // Compute builds and seals the statement for one contract and period.
 // Events must be normalised (events.ReadJSONL does this).
 func Compute(spec *contract.Spec, evs []events.Event, p Period) (*Statement, error) {
+	return compute(spec, evs, p, spec.Reconciles())
+}
+
+// compute is Compute with reconciliation optional, so that corroboration can
+// compute each party's own view under a reconciling contract.
+func compute(spec *contract.Spec, evs []events.Event, p Period, reconcile bool) (*Statement, error) {
 	if err := p.Validate(); err != nil {
 		return nil, err
 	}
@@ -109,15 +127,30 @@ func Compute(spec *contract.Spec, evs []events.Event, p Period) (*Statement, err
 		return nil, err
 	}
 
-	w := &warnCounts{unknownNodes: map[string]int{}}
+	w := &warnCounts{unknownNodes: map[string]int{}, unlisted: map[string]int{}}
 	byNode := map[string][]events.Event{}
+	sideOf := map[string]string{}
 	for _, e := range sorted {
+		side, ok := spec.SideOf(e.SignerRole, e.Source)
+		if !ok {
+			label := "source " + e.Source
+			if e.SignerRole != "" {
+				label = "signer role " + e.SignerRole
+			}
+			if !spec.IgnoresUnlisted() {
+				return nil, fmt.Errorf("event %s: %s is not listed in the contract's sources", e.ID, label)
+			}
+			w.unlisted[label]++
+			w.unlistedTotal++
+			continue
+		}
 		if !spec.HasNode(e.Node) {
 			w.unknownNodes[e.Node]++
 			w.unknownNodeTotal++
 			continue
 		}
 		byNode[e.Node] = append(byNode[e.Node], e)
+		sideOf[e.ID] = side
 	}
 
 	nodes := spec.SortedNodes()
@@ -125,9 +158,24 @@ func Compute(spec *contract.Spec, evs []events.Event, p Period) (*Statement, err
 	nodeDown := make(map[string]interval.Set, len(nodes))
 	allowedExcl := make(map[string]interval.Set, len(nodes))
 	unmonitored := make(map[string]interval.Set, len(nodes))
+	presence := make(map[string]map[string]interval.Set, len(nodes))
 	for _, n := range nodes {
-		segs[n] = buildSegments(spec, byNode[n], p, w)
-		var countable, excluded, unmon []interval.Interval
+		if reconcile {
+			var prov, ten []events.Event
+			for _, e := range byNode[n] {
+				if sideOf[e.ID] == contract.SideTenant {
+					ten = append(ten, e)
+				} else {
+					prov = append(prov, e)
+				}
+			}
+			segs[n] = append(buildSegments(spec, prov, p, w, contract.SideProvider), buildSegments(spec, ten, p, w, contract.SideTenant)...)
+		} else {
+			segs[n] = buildSegments(spec, byNode[n], p, w, contract.SideProvider)
+		}
+		var excluded, unmon []interval.Interval
+		countable := map[string][]interval.Interval{}
+		seen := map[string][]interval.Interval{}
 		for _, sg := range segs[n] {
 			if sg.kind == "unmonitored" {
 				unmon = append(unmon, sg.iv)
@@ -135,14 +183,26 @@ func Compute(spec *contract.Spec, evs []events.Event, p Period) (*Statement, err
 			if sg.reportOnly {
 				continue
 			}
+			seen[sg.side] = append(seen[sg.side], sg.iv)
 			if sg.excluded {
 				excluded = append(excluded, sg.iv)
 			} else {
-				countable = append(countable, sg.iv)
+				countable[sg.side] = append(countable[sg.side], sg.iv)
 			}
 		}
+		var raw interval.Set
+		if reconcile {
+			raw = reconcileSides(spec.Contract.Measurement.Reconcile,
+				interval.Normalize(countable[contract.SideProvider]), interval.Normalize(countable[contract.SideTenant]))
+			presence[n] = map[string]interval.Set{
+				contract.SideProvider: interval.Normalize(seen[contract.SideProvider]),
+				contract.SideTenant:   interval.Normalize(seen[contract.SideTenant]),
+			}
+		} else {
+			raw = interval.Normalize(countable[contract.SideProvider])
+		}
 		allowed, overflow := interval.Normalize(excluded).SplitAfter(spec.ExclusionCap)
-		down := interval.Normalize(countable).Subtract(allowed).Union(overflow).DropShorterThan(spec.MinIncident)
+		down := raw.Subtract(allowed).Union(overflow).DropShorterThan(spec.MinIncident)
 		nodeDown[n] = down
 		allowedExcl[n] = allowed
 		unmonitored[n] = interval.Normalize(unmon)
@@ -192,7 +252,11 @@ func Compute(spec *contract.Spec, evs []events.Event, p Period) (*Statement, err
 		}
 		for _, iv := range nodeDown[n] {
 			causes, ids := attribute(iv, segs[n], false)
-			nr.Incidents = append(nr.Incidents, incident(iv, "node", causes, ids))
+			in := incident(iv, "node", causes, ids)
+			if reconcile {
+				in.SeenBy = seenBy(iv, presence[n])
+			}
+			nr.Incidents = append(nr.Incidents, in)
 		}
 		if ro := rackOnly[n]; len(ro) > 0 {
 			rackName := nr.Rack
@@ -260,6 +324,9 @@ func Compute(spec *contract.Spec, evs []events.Event, p Period) (*Statement, err
 	if unmonTotal > 0 || spec.Contract.Measurement.Unmonitored != "" {
 		st.EngineVersion = Semantics020
 	}
+	if spec.HasSources() {
+		st.EngineVersion = Semantics030
+	}
 
 	if err := st.Seal(); err != nil {
 		return nil, err
@@ -267,8 +334,9 @@ func Compute(spec *contract.Spec, evs []events.Event, p Period) (*Statement, err
 	return st, nil
 }
 
-// buildSegments replays one node's events into classified intervals.
-func buildSegments(spec *contract.Spec, evs []events.Event, p Period, w *warnCounts) []segment {
+// buildSegments replays one node's events from one party into classified
+// intervals.
+func buildSegments(spec *contract.Spec, evs []events.Event, p Period, w *warnCounts, side string) []segment {
 	type openState struct {
 		start     int64
 		causes    []string
@@ -288,7 +356,7 @@ func buildSegments(spec *contract.Spec, evs []events.Event, p Period, w *warnCou
 		if iv.End <= iv.Start {
 			return
 		}
-		sg := segment{iv: iv, kind: kind, causes: uniqueSorted(o.causes), ids: ids}
+		sg := segment{iv: iv, side: side, kind: kind, causes: uniqueSorted(o.causes), ids: ids}
 		switch kind {
 		case "down":
 			if spec.Contract.Exclusions.CustomerCaused && allCustomer(sg.causes) {
@@ -405,6 +473,80 @@ func buildSegments(spec *contract.Spec, evs []events.Event, p Period, w *warnCou
 	return out
 }
 
+// reconcileSides combines the provider's and the tenant's countable time on
+// one node. Every episode (a stretch of the union of both sets) is kept or
+// dropped by rule.Count, then cut to start and end on the clocks the rules
+// name. A rule that names a party which recorded nothing in the episode
+// falls back to the other party's clock.
+func reconcileSides(rule *contract.Reconcile, prov, ten interval.Set) interval.Set {
+	var out []interval.Interval
+	for _, ep := range prov.Union(ten) {
+		pc, tc := prov.Clip(ep.Start, ep.End), ten.Clip(ep.Start, ep.End)
+		hasP, hasT := len(pc) > 0, len(tc) > 0
+		switch rule.Count {
+		case contract.CountBoth:
+			if !hasP || !hasT {
+				continue
+			}
+		case contract.SideProvider:
+			if !hasP {
+				continue
+			}
+		case contract.SideTenant:
+			if !hasT {
+				continue
+			}
+		}
+		start := clock(rule.Start, ep.Start, pc, tc, true)
+		end := clock(rule.End, ep.End, pc, tc, false)
+		if end > start {
+			out = append(out, interval.Interval{Start: start, End: end})
+		}
+	}
+	return interval.Normalize(out)
+}
+
+// clock picks an episode's start (first) or end (last) under one rule.
+func clock(rule string, whole int64, pc, tc interval.Set, first bool) int64 {
+	edge := func(s interval.Set) int64 {
+		if first {
+			return s[0].Start
+		}
+		return s[len(s)-1].End
+	}
+	hasP, hasT := len(pc) > 0, len(tc) > 0
+	switch {
+	case rule == contract.SideProvider && hasP, rule == contract.SideTenant && !hasT:
+		return edge(pc)
+	case rule == contract.SideTenant && hasT, rule == contract.SideProvider && !hasP:
+		return edge(tc)
+	}
+	// earliest or latest of the two parties' clocks.
+	if !hasP || !hasT {
+		return whole
+	}
+	if rule == contract.ClockLatest {
+		return max(edge(pc), edge(tc))
+	}
+	return min(edge(pc), edge(tc))
+}
+
+// seenBy says which parties recorded any part of iv.
+func seenBy(iv interval.Interval, presence map[string]interval.Set) string {
+	one := interval.Set{iv}
+	p := len(presence[contract.SideProvider].Intersect(one)) > 0
+	t := len(presence[contract.SideTenant].Intersect(one)) > 0
+	switch {
+	case p && t:
+		return "both"
+	case t:
+		return contract.SideTenant
+	case p:
+		return contract.SideProvider
+	}
+	return ""
+}
+
 // attribute collects causes and event ids from segments that overlap iv. With
 // countableOnly set, excluded segments are skipped.
 func attribute(iv interval.Interval, segs []segment, countableOnly bool) (causes, ids []string) {
@@ -505,6 +647,17 @@ func (w *warnCounts) render() []string {
 	add(w.degradedIgnored, "degraded interval(s) ignored because the contract does not count degradation as downtime")
 	add(w.unmonEndWithout, "unmonitored_end event(s) without a preceding unmonitored_start were ignored")
 	add(w.dupUnmonitored, "unmonitored_start event(s) during an open unmonitored stretch were merged")
+	if w.unlistedTotal > 0 {
+		labels := make([]string, 0, len(w.unlisted))
+		for l := range w.unlisted {
+			labels = append(labels, l)
+		}
+		sort.Strings(labels)
+		if len(labels) > 5 {
+			labels = append(labels[:5], "...")
+		}
+		out = append(out, fmt.Sprintf("%d event(s) from sources the contract does not list were ignored: %s", w.unlistedTotal, strings.Join(labels, ", ")))
+	}
 	return out
 }
 
@@ -550,8 +703,8 @@ func Replay(spec *contract.Spec, evs []events.Event, stored *Statement) error {
 		return err
 	}
 	if !Supported(stored.EngineVersion) {
-		return fmt.Errorf("statement needs engine semantics %s; this binary (engine %s) supports %s and %s",
-			stored.EngineVersion, EngineVersion, Semantics010, Semantics020)
+		return fmt.Errorf("statement needs engine semantics %s; this binary (engine %s) supports %s, %s and %s",
+			stored.EngineVersion, EngineVersion, Semantics010, Semantics020, Semantics030)
 	}
 	start, err := events.ParseTime(stored.Period.Start)
 	if err != nil {
