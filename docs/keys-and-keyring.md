@@ -11,6 +11,7 @@ Since version 0.2 every writer has its own key by default.
 | `capledger agent` | `--key-dir`, default `/var/lib/capledger/keys` on the node | role `provider-agent`, its node |
 | `capledger probe` | `--key-dir` chosen by the tenant | role `tenant-probe`, its node |
 | `capledger event emit` (integrations, the Slurm watcher) | `--key-dir` or `--key` | role `provider-integration` (change with `--role`) |
+| `capledger watch kubernetes` | `--key-dir` (default `/var/lib/capledger/watcher-keys`) or `--key` | role `provider-integration`, no node |
 | `capledger evidence append`, `bundle create` | `--key-dir` or `--key` | no role or node |
 | `capledger sla sign`, `ledger consent` (since 0.3) | a party's own key, `--key-dir` or `--key` | not announced; enrol it with `keyring add --role provider` (or `customer`, `financier`) |
 | `capledger evidence checkpoint`, `ledger serve` (since 0.3) | the signer's or the ledger's witness key | not announced; enrol it with `keyring add --role witness` (or the signer's party role) |
@@ -39,7 +40,7 @@ capledger keyring import --keyring keyring.json \
   --owner "Example Neocloud" --role provider-agent
 ```
 
-Each announced key is added with `nodes` set to the node it announced. Writers that speak for many nodes, such as the Slurm watcher, are imported with `--bind-nodes=false`. `--key-id` limits the import to keys you name, and `--not-before` / `--not-after` set a validity window. Forged or corrupt announcements stop the import before anything is saved.
+Each announced key is added with `nodes` set to the node it announced. Writers that speak for many nodes, such as the Slurm and Kubernetes watchers, are imported with `--bind-nodes=false`. `--key-id` limits the import to keys you name, and `--not-before` / `--not-after` set a validity window. Forged or corrupt announcements stop the import before anything is saved.
 
 This is trust on first use. Compare the key ids with what the nodes themselves report (the agent prints its key id when it starts) before relying on them: if a node was already compromised when it first announced a key, the keyring would trust the attacker's key.
 
