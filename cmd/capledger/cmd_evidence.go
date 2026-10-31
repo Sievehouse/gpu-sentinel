@@ -305,6 +305,8 @@ func cmdEvidenceVerify(args []string, s streams) error {
 	fs.Var(&logs, "log", "evidence log; repeat for several logs")
 	fs.Var(&pubs, "pub", "trusted public key (PEM); repeat as needed")
 	keyringPath := fs.String("keyring", "", "keyring of trusted keys, with node bindings and validity windows")
+	var cps stringList
+	fs.Var(&cps, "checkpoint", "signed checkpoint (from evidence checkpoint or a ledger server); the logs must extend the history it fixed; repeat as needed")
 	format := fs.String("format", "json", "json or text")
 	if err := parseFlags(fs, args); err != nil {
 		return err
@@ -319,10 +321,17 @@ func cmdEvidenceVerify(args []string, s streams) error {
 	if err != nil {
 		return err
 	}
+	checkpoints, err := loadCheckpoints(cps, kr, s)
+	if err != nil {
+		return err
+	}
 	ok := true
 	reps := make([]evidence.Report, 0, len(logs))
 	for _, p := range logs {
 		rep := evidence.VerifyFileWith(p, kr.PublicKeys(), kr.EntryCheck())
+		if len(checkpoints) > 0 {
+			checkAgainst(&rep, p, checkpoints, s)
+		}
 		ok = ok && rep.OK
 		reps = append(reps, rep)
 	}
@@ -390,5 +399,105 @@ func cmdEvidenceAppend(args []string, s streams) error {
 		return err
 	}
 	fmt.Fprintf(s.out, "appended %s entry (seq %d, hash %s)\n", *kind, entry.Seq, entry.Hash)
+	return nil
+}
+
+// loadCheckpoints reads checkpoint files and verifies each signature with a
+// key from the keyring that was valid when the checkpoint was made.
+func loadCheckpoints(paths []string, kr *keyring.Keyring, s streams) ([]*evidence.Checkpoint, error) {
+	var out []*evidence.Checkpoint
+	for _, p := range paths {
+		cp, err := evidence.ReadCheckpoint(p)
+		if err != nil {
+			return nil, err
+		}
+		e, err := kr.KeyAt(cp.KeyID, cp.Time())
+		if err != nil {
+			return nil, codedError{1, fmt.Sprintf("checkpoint %s: %v", p, err)}
+		}
+		if err := cp.Verify(e.Public()); err != nil {
+			return nil, codedError{1, fmt.Sprintf("checkpoint %s: %v", p, err)}
+		}
+		fmt.Fprintf(s.err, "checkpoint %s: %d log(s) at %s, signed by %s (%s)\n", p, len(cp.Logs), cp.CreatedAt, e.Owner, e.Role)
+		out = append(out, cp)
+	}
+	return out, nil
+}
+
+// checkAgainst adds a problem to rep for every checkpoint whose history the
+// log does not extend. A log that no checkpoint covers is reported, too:
+// it is not wrong, but nothing fixes its history yet.
+func checkAgainst(rep *evidence.Report, path string, cps []*evidence.Checkpoint, s streams) {
+	name := evidence.LogName(path)
+	entries, err := evidence.ReadFile(path)
+	if err != nil {
+		return // the verification report already says why
+	}
+	covered := false
+	for _, cp := range cps {
+		h, ok := cp.Head(name)
+		if !ok {
+			continue
+		}
+		covered = true
+		if err := h.CheckPrefix(entries); err != nil {
+			rep.Problems = append(rep.Problems, fmt.Sprintf("checkpoint of %s: %v", cp.CreatedAt, err))
+			rep.OK = false
+		}
+	}
+	if !covered {
+		fmt.Fprintf(s.err, "%s: no checkpoint covers log %q\n", path, name)
+	}
+}
+
+func cmdEvidenceCheckpoint(args []string, s streams) error {
+	fs := newFlags("evidence checkpoint", s)
+	var logs, pubs stringList
+	fs.Var(&logs, "log", "evidence log to include; repeat for several logs (each is named after its file, without .jsonl)")
+	fs.Var(&pubs, "pub", "trusted public key (PEM); repeat as needed")
+	keyringPath := fs.String("keyring", "", "keyring to verify the logs with before fixing their history")
+	noVerify := fs.Bool("no-verify", false, "checkpoint the logs without verifying them (not recommended)")
+	keyPath := fs.String("key", "", "private signing key (PEM) of the party or witness making the checkpoint")
+	keyDir := fs.String("key-dir", "", "directory holding that key (created on first use)")
+	note := fs.String("note", "", "free-text note, e.g. \"daily exchange 2026-10-14\"")
+	out := fs.String("out", "", "write the checkpoint here (default: stdout)")
+	if err := parseFlags(fs, args); err != nil {
+		return err
+	}
+	kr, err := trustOrSkip(*noVerify, *keyringPath, pubs, s)
+	if err != nil {
+		return err
+	}
+	data, err := readLogs(logs, kr, s)
+	if err != nil {
+		return err
+	}
+	priv, err := signingKey(*keyPath, *keyDir, s)
+	if err != nil {
+		return err
+	}
+	heads := make([]evidence.LogHead, 0, len(data))
+	for _, ld := range data {
+		h, err := evidence.HeadOf(evidence.LogName(ld.path), ld.entries)
+		if err != nil {
+			return fmt.Errorf("%s: %w", ld.path, err)
+		}
+		heads = append(heads, h)
+	}
+	cp, err := evidence.NewCheckpoint(heads, *note, priv, time.Now())
+	if err != nil {
+		return err
+	}
+	if *out == "" {
+		return writeJSON(s.out, cp)
+	}
+	b, err := json.MarshalIndent(cp, "", "  ")
+	if err != nil {
+		return err
+	}
+	if err := os.WriteFile(*out, append(b, '\n'), 0o644); err != nil {
+		return err
+	}
+	fmt.Fprintf(s.out, "checkpoint of %d log(s) signed by key %s: %s\n", len(heads), cp.KeyID, *out)
 	return nil
 }
