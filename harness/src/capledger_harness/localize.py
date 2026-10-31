@@ -5,6 +5,11 @@ every node pair, test the whole cluster, split failing groups in half and
 recurse. With k bad nodes among n this needs about 2·k·log2(n/k) tests, and
 tests on disjoint groups at the same depth can run in the same round.
 
+A larger fan-out splits a failing group into more parts per round: more
+tests, fewer rounds. With fan-out 8, two bad nodes among 64 are found in 3
+rounds (whole cluster, eight groups of eight, the suspects one by one)
+instead of 7.
+
 Collectives need at least two nodes, so a single suspect node is tested
 together with a node already known to be healthy.
 
@@ -33,10 +38,25 @@ class LocalizeResult:
     log: tuple[tuple[Group, bool], ...] = field(repr=False)
 
 
-def localize(nodes: Sequence[str], test: TestFn) -> LocalizeResult:
+def split(g: Group, fanout: int) -> list[Group]:
+    """Split g into min(fanout, len(g)) near-equal parts, larger ones last
+    (for fan-out 2: g[:len//2] and g[len//2:])."""
+    k = min(fanout, len(g))
+    size, extra = divmod(len(g), k)
+    parts, i = [], 0
+    for j in range(k):
+        n = size + (1 if j >= k - extra else 0)
+        parts.append(g[i:i + n])
+        i += n
+    return parts
+
+
+def localize(nodes: Sequence[str], test: TestFn, fanout: int = 2) -> LocalizeResult:
     """Return the nodes for which every group containing them failed."""
     if len(nodes) < 2:
         raise ValueError("need at least two nodes")
+    if fanout < 2:
+        raise ValueError("fan-out must be at least 2")
     known_good: list[str] = []
     bad: list[str] = []
     log: list[tuple[Group, bool]] = []
@@ -66,8 +86,7 @@ def localize(nodes: Sequence[str], test: TestFn) -> LocalizeResult:
             elif len(g) == 1:
                 bad.append(g[0])
             else:
-                mid = len(g) // 2
-                nxt.extend([g[:mid], g[mid:]])
+                nxt.extend(split(g, fanout))
         if deferred and not progressed and not known_good:
             # Every remaining group is a singleton and no healthy reference
             # exists yet: report them as unresolved rather than guessing.
@@ -119,14 +138,14 @@ def threshold_test(cluster: SimulatedCluster, *, floor_ratio: float = 0.92, marg
     return test
 
 
-def simulate(n_nodes: int = 64, n_bad: int = 2, degradation: float = 0.20, noise: float = 0.015, seed: int = 7) -> dict:
+def simulate(n_nodes: int = 64, n_bad: int = 2, degradation: float = 0.20, noise: float = 0.015, seed: int = 7, fanout: int = 2) -> dict:
     """Run one simulated localisation and compare it with the ground truth."""
     rng = random.Random(seed)
     nodes = [f"gpu-{i:03d}" for i in range(1, n_nodes + 1)]
     truth = sorted(rng.sample(nodes, n_bad))
     factors = {n: (1.0 - degradation if n in truth else 1.0) for n in nodes}
     cluster = SimulatedCluster(factors=factors, noise=noise, seed=seed)
-    result = localize(nodes, threshold_test(cluster))
+    result = localize(nodes, threshold_test(cluster), fanout)
     return {
         "nodes": n_nodes,
         "injected_bad": truth,
@@ -136,5 +155,6 @@ def simulate(n_nodes: int = 64, n_bad: int = 2, degradation: float = 0.20, noise
         "logical_tests": result.tests,
         "measurements": cluster.measurements,
         "rounds": result.rounds,
+        "fanout": fanout,
         "all_pairs_tests_for_comparison": n_nodes * (n_nodes - 1) // 2,
     }
