@@ -130,8 +130,13 @@ func TestLedgerCLI(t *testing.T) {
 	// The financier checks the co-signatures itself.
 	mustRun(t, "sla", "verify", "--statement", stmts[0], "--signature", sigs[0], "--signature", sigs[1], "--keyring", kr, "--require", "provider,customer")
 
-	if out := mustRun(t, as("example-neocloud", "ledger", "status")...); !strings.Contains(out, "customer, provider") || !strings.Contains(out, "probe-gpu-003  example-lab") {
+	if out := mustRun(t, as("example-neocloud", "ledger", "status", "--witness-pub", at("witness-from-ledger.pem"))...); !strings.Contains(out, "customer, provider") || !strings.Contains(out, "probe-gpu-003  example-lab") {
 		t.Fatalf("status:\n%s", out)
+	}
+	got, _ := os.ReadFile(at("witness-from-ledger.pem"))
+	want, _ := os.ReadFile(at("witness", "capledger.pub.pem"))
+	if string(got) != string(want) {
+		t.Fatalf("witness key from the ledger differs:\n%s\n%s", got, want)
 	}
 	wantExit(t, 2, "ledger", "push", "--log", at("gpu-003.jsonl"))
 }
