@@ -29,7 +29,7 @@ An evidence log is a JSON Lines file. Each line is one entry:
 | --- | --- | --- |
 | `key` | every writer, once per key and log | Key announcement: `keyId`, `publicKey` (PEM), and the claimed `node`, `role` and `software`. Signed by the key it announces ([keys and keyrings](keys-and-keyring.md)). |
 | `heartbeat` | agent, probe | `{"node":"gpu-003","ts":"2026-10-07T09:01:00Z","intervalSeconds":60,"role":"agent","gpus":8}`: alive at `ts`, next heartbeat promised within `intervalSeconds`. `gpus` is the last GPU count, when known. |
-| `observation` | agent, probe | A raw fault or measurement: the parsed kernel line (with the line itself), the policy action and version, or a GPU count or benchmark result |
+| `observation` | agent, probe | A raw fault or measurement: the parsed kernel line (with the line itself), the policy action and version, or a GPU count or benchmark result. With `agent --redact`, process names and ids are replaced by `<redacted>` in the line and its message, and the observation carries `"redacted": true` |
 | `event` | agent, probe, integrations | An availability event for the SLA engine ([SLA spec](sla-spec.md#events)); `evidence` points at the observation behind it |
 | `statement` | `evidence append` | A sealed SLA statement |
 | `bundle` | `bundle create --log` | `bundleId`, `bundleType`, `subject`, `created`, `files`, `totalBytes`, `signerKeyId`: commits the log to a bundle's exact contents |
