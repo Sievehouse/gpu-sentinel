@@ -44,9 +44,11 @@ SLA
 Evidence
   event emit        append one signed availability event (for integrations and operators)
   events export     extract events from evidence logs; --derive-gaps adds unmonitored time
-  evidence verify   verify hash chains, signatures and keyring rules of evidence logs
+  evidence verify   verify hash chains, signatures, keyring rules and checkpoints of logs
   evidence append   append a signed entry (for example a statement) to a log
   evidence gaps     list stretches without heartbeats
+  evidence checkpoint
+                    sign the size, last hash and Merkle root of logs, to exchange
   bundle create     pack files into a signed evidence bundle (.tar.gz)
   bundle verify     verify a bundle and optionally extract it
 
@@ -73,26 +75,27 @@ type streams struct {
 type commandFunc func(args []string, s streams) error
 
 var commands = map[string]commandFunc{
-	"agent":           cmdAgent,
-	"probe":           cmdProbe,
-	"sla compute":     cmdSLACompute,
-	"sla verify":      cmdSLAVerify,
-	"sla sign":        cmdSLASign,
-	"sla corroborate": cmdSLACorroborate,
-	"contract check":  cmdContractCheck,
-	"event emit":      cmdEventEmit,
-	"events export":   cmdEventsExport,
-	"evidence verify": cmdEvidenceVerify,
-	"evidence append": cmdEvidenceAppend,
-	"evidence gaps":   cmdEvidenceGaps,
-	"bundle create":   cmdBundleCreate,
-	"bundle verify":   cmdBundleVerify,
-	"keygen":          cmdKeygen,
-	"keyring add":     cmdKeyringAdd,
-	"keyring import":  cmdKeyringImport,
-	"keyring list":    cmdKeyringList,
-	"xid parse":       cmdXIDParse,
-	"xid policy":      cmdXIDPolicy,
+	"agent":               cmdAgent,
+	"probe":               cmdProbe,
+	"sla compute":         cmdSLACompute,
+	"sla verify":          cmdSLAVerify,
+	"sla sign":            cmdSLASign,
+	"sla corroborate":     cmdSLACorroborate,
+	"contract check":      cmdContractCheck,
+	"event emit":          cmdEventEmit,
+	"events export":       cmdEventsExport,
+	"evidence verify":     cmdEvidenceVerify,
+	"evidence append":     cmdEvidenceAppend,
+	"evidence gaps":       cmdEvidenceGaps,
+	"evidence checkpoint": cmdEvidenceCheckpoint,
+	"bundle create":       cmdBundleCreate,
+	"bundle verify":       cmdBundleVerify,
+	"keygen":              cmdKeygen,
+	"keyring add":         cmdKeyringAdd,
+	"keyring import":      cmdKeyringImport,
+	"keyring list":        cmdKeyringList,
+	"xid parse":           cmdXIDParse,
+	"xid policy":          cmdXIDPolicy,
 }
 
 func run(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
