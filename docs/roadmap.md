@@ -1,6 +1,6 @@
 # Roadmap
 
-Building is gated on customer evidence, not the other way round. The 30-day plan below comes from the opportunity research behind this project; the build milestones only start in earnest after Gate 4. Versions 0.2 and 0.3 were built ahead of that gate, so the most useful next step is the proof itself, not more features.
+Building is gated on customer evidence, not the other way round. The 30-day plan below comes from the opportunity research behind this project; the build milestones only start in earnest after Gate 4. Versions 0.2 to 0.4 were built ahead of that gate, so the most useful next step is the proof itself, not more features.
 
 ## 30-day validation plan
 
@@ -35,8 +35,9 @@ The kit for this proof is in the repository since 0.3: the fault injector, the t
 | --- | --- |
 | 0.1 | SLA engine, evidence log, XID agent, Slurm watcher, acceptance harness, examples |
 | 0.2 | Heartbeats and gap detection; tenant-side probe and provider/tenant corroboration; AMD collector (amdgpu kernel messages, RAS counters) and AMD acceptance runs; signed evidence bundles; engine reads YAML specs directly; per-node keys by default, with a keyring of owners, roles and node bindings |
-| 0.3 (this) | Hosted ledger service with provider, customer, financier and auditor roles (file-backed); co-signed monthly statements; daily witness checkpoints and party-signed checkpoints (the Merkle-root exchange); contract reconcile rules that say whose clock wins; the 0.4 items below, brought forward; the proof-of-value kit |
-| 0.4 | ~~Consented financier feed for SLA insurers and lenders; contract-level allow-lists of event sources~~ shipped in 0.3. Next: PostgreSQL and object-storage backends for the ledger, for operators hosting many contracts; results from the technical proof |
+| 0.3 | Hosted ledger service with provider, customer, financier and auditor roles (file-backed); co-signed monthly statements; daily witness checkpoints and party-signed checkpoints (the Merkle-root exchange); contract reconcile rules that say whose clock wins; a consented financier feed and contract-level allow-lists of sources (planned for 0.4, brought forward); the proof-of-value kit |
+| 0.4 (this) | Kubernetes node watcher (Ready, NVIDIA NVSentinel and node-problem-detector conditions, taints, allocatable GPUs); redaction of process names and ids in recorded kernel lines; one ledger process hosting several contracts, each with its own keyring; a PowerShell demo and Windows CI. (The 0.4 items planned earlier, a consented financier feed and contract-level allow-lists of sources, shipped in 0.3.) |
+| 0.5 | Results from the technical proof; PostgreSQL and object-storage backends for the ledger; a ticketing integration (repairs from the provider's ticket system as events) |
 | Later | GPU and TPM host attestation for agents and probes; hardware-backed node keys; single sign-on and rate limiting for the ledger; a self-hosted bundle for sovereign or air-gapped sites |
 
 ## Deliberately not planned
