@@ -57,3 +57,42 @@ func TestReconciledContractCLI(t *testing.T) {
 	// The version 1 contract lists no sources, so it cannot split one file.
 	wantExit(t, 1, "sla", "corroborate", "--contract", yamlContract, "--events", bothEvents, "--period", "2026-10")
 }
+
+func TestCoSigningCLI(t *testing.T) {
+	dir := t.TempDir()
+	stmt := filepath.Join(dir, "statement.json")
+	kr := filepath.Join(dir, "keyring.json")
+	mustRun(t, "sla", "compute", "--contract", yamlContract, "--events", providerEvents, "--period", "2026-10", "--out", stmt)
+	for _, p := range []struct{ dir, owner, role string }{
+		{"provider-signer", "Example Neocloud", "provider"},
+		{"customer-signer", "Example Lab", "customer"},
+	} {
+		mustRun(t, "keygen", "--out", filepath.Join(dir, p.dir))
+		mustRun(t, "keyring", "add", "--keyring", kr, "--pub", filepath.Join(dir, p.dir, "capledger.pub.pem"), "--owner", p.owner, "--role", p.role)
+	}
+	out := mustRun(t, "sla", "sign", "--statement", stmt, "--party", "provider", "--key-dir", filepath.Join(dir, "provider-signer"))
+	provSig := filepath.Join(dir, "statement.provider.sig.json")
+	if !strings.Contains(out, provSig) {
+		t.Fatalf("sign: %s", out)
+	}
+	out = wantExit(t, 1, "sla", "verify", "--statement", stmt, "--signature", provSig, "--keyring", kr, "--require", "provider,customer")
+	if !strings.Contains(out, "missing customer") {
+		t.Fatalf("missing party not reported:\n%s", out)
+	}
+	mustRun(t, "sla", "sign", "--statement", stmt, "--party", "customer", "--key-dir", filepath.Join(dir, "customer-signer"))
+	custSig := filepath.Join(dir, "statement.customer.sig.json")
+	out = mustRun(t, "sla", "verify", "--statement", stmt, "--contract", yamlContract, "--events", providerEvents,
+		"--signature", provSig, "--signature", custSig, "--keyring", kr, "--require", "provider,customer")
+	if !strings.Contains(out, "replay OK") || !strings.Contains(out, "co-signed: every required party accepted") {
+		t.Fatalf("co-signed:\n%s", out)
+	}
+	// The provider's key cannot sign as the customer.
+	forged := filepath.Join(dir, "forged.sig.json")
+	mustRun(t, "sla", "sign", "--statement", stmt, "--party", "customer", "--key-dir", filepath.Join(dir, "provider-signer"), "--out", forged)
+	out = wantExit(t, 1, "sla", "verify", "--statement", stmt, "--signature", provSig, "--signature", forged, "--keyring", kr, "--require", "provider,customer")
+	if !strings.Contains(out, `whose keyring role is "provider"`) {
+		t.Fatalf("forged party not caught:\n%s", out)
+	}
+	wantExit(t, 2, "sla", "verify", "--statement", stmt, "--signature", provSig)
+	wantExit(t, 1, "sla", "sign", "--statement", stmt, "--party", "customer", "--decision", "dispute", "--key-dir", filepath.Join(dir, "customer-signer"))
+}
