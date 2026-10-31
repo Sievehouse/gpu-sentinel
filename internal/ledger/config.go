@@ -19,6 +19,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"path/filepath"
 	"regexp"
 	"strings"
 )
@@ -43,6 +44,21 @@ type Config struct {
 	Kind       string  `json:"kind"`
 	Contract   string  `json:"contract"`
 	Parties    []Party `json:"parties"`
+	// Keyring, if set, is this contract's own keyring (a path relative to
+	// the configuration file). A ledger that hosts several contracts should
+	// give each its own, so that keys enrolled for one contract cannot sign
+	// for another. Without it the server's --keyring applies.
+	Keyring string `json:"keyring,omitempty"`
+
+	dir string // directory of the configuration file
+}
+
+// KeyringPath returns the path of the contract's own keyring, or "".
+func (c *Config) KeyringPath() string {
+	if c.Keyring == "" || filepath.IsAbs(c.Keyring) {
+		return c.Keyring
+	}
+	return filepath.Join(c.dir, c.Keyring)
 }
 
 // Party is one organisation with access to the ledger.
@@ -81,6 +97,7 @@ func LoadConfig(path string) (*Config, error) {
 	if err := c.Validate(); err != nil {
 		return nil, fmt.Errorf("%s: %w", path, err)
 	}
+	c.dir = filepath.Dir(path)
 	return &c, nil
 }
 
