@@ -1,0 +1,48 @@
+# Version 2 of the hgx-16-node contract (v0.3+). Same terms, plus two things the
+# parties agree before anyone compares records:
+#   sources:   which event sources count, and which party each belongs to;
+#   reconcile: how the provider's and the tenant's records combine into one
+#              outage clock ("which clock wins").
+# Worked through by hand in docs/sla-spec.md. Illustrative terms only.
+apiVersion: capacity-ledger/v1alpha1
+kind: ContractSLA
+metadata:
+  id: example-neocloud--example-lab--2026
+  version: 2
+  provider: Example Neocloud (fictional)
+  customer: Example Lab (fictional)
+  description: 16 HGX nodes with 8 GPUs each and a monthly availability SLA, measured from both sides. Illustrative terms only, not legal advice.
+cluster:
+  gpusPerNode: 8
+  nodes: [gpu-001, gpu-002, gpu-003, gpu-004, gpu-005, gpu-006, gpu-007, gpu-008,
+          gpu-009, gpu-010, gpu-011, gpu-012, gpu-013, gpu-014, gpu-015, gpu-016]
+measurement:
+  minIncident: 5m              # outages shorter than this do not count
+  degradedCountsAsDown: true   # e.g. a node below the agreed fabric floor
+  reconcile:
+    count: either              # an outage counts if either party recorded it
+    start: provider            # it starts at the provider's first fault record
+    end: tenant                # and ends when the tenant's jobs see the node again
+exclusions:
+  maintenanceNotice: 72h       # announced at least 72h ahead -> excluded
+  maxExcludedPerNode: 8h       # excluded time beyond 8h per node counts again
+  customerCaused: true         # causes starting with "customer" are excluded
+credits:
+  monthlyFee: "300000.00"
+  currency: USD
+  capPercent: 30
+  tiers:
+    - { availabilityBelow: "99.9", creditPercent: 5 }
+    - { availabilityBelow: "99.5", creditPercent: 10 }
+    - { availabilityBelow: "99.0", creditPercent: 25 }
+sources:
+  provider:
+    # Keyring roles are attested by signatures ("events export --signers").
+    roles: [provider-agent, provider-integration]
+    # Source names are self-declared; list them only for events that do not
+    # come from signed logs, such as this repository's hand-written examples.
+    sources: [capledger-agent, provider-health-check, provider-change-calendar, slurm-state-watcher]
+  tenant:
+    roles: [tenant-probe]
+    sources: [tenant-probe]
+  unlisted: reject             # an event from any other source stops the computation
