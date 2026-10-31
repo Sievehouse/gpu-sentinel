@@ -12,7 +12,7 @@ GPU Sentinel sits between parties with opposing financial interests: a provider 
 
 ## Threats and mitigations
 
-| Threat | Mitigation in v0.3 | Residual risk and plan |
+| Threat | Mitigation in v0.4 | Residual risk and plan |
 | --- | --- | --- |
 | A party edits, deletes or reorders past entries | Hash chain, signatures, sequence numbers; `evidence verify` reports every break | None for entries before a checkpoint the other party holds; see the next row for the newest entries |
 | A writer truncates its newest entries, or rewrites its whole history and re-signs it with its own valid key | Checkpoints: the ledger's witness signs every log's size, last hash and Merkle root daily, parties can sign and exchange their own, and `evidence verify --checkpoint` fails a log that no longer extends a checkpoint | Entries written after the last checkpoint the other party holds can still be cut. Checkpoint often; push continuously |
@@ -33,8 +33,10 @@ GPU Sentinel sits between parties with opposing financial interests: a provider 
 | Replays with a different engine give different results | Statements record the semantics they need; old statements keep their hashes; unknown semantics are refused; an independent Python implementation is compared with the engine in CI | Engine changes require new semantics and a migration note |
 | The agent becomes an attack path into GPU hosts | Read-only, no network listener, no third-party code, runs as non-root with all capabilities dropped (kern.log mode); the init container that prepares its directory only changes ownership | /dev/kmsg mode needs a privileged container; prefer the log-file mode |
 | Fault injection reaches production | `inject_fault.sh` refuses to run without `--yes`, records every injection, keeps undo commands, and is documented for rented test clusters only | Operators can still point it at the wrong host |
-| Sensitive data leaks through evidence | Only device counters, kernel fault lines and test results are recorded; no job contents, datasets or weights | Kernel lines can include process names; document and offer redaction |
+| Sensitive data leaks through evidence | Only device counters, kernel fault lines and test results are recorded; no job contents, datasets or weights. `agent --redact` removes process names and ids from recorded kernel lines (deterministically, so the provider's own kernel log can still be matched to them); the Kubernetes watcher records node conditions, never pod or workload data | Without `--redact`, kernel lines keep process names, which can identify a customer's jobs; turn it on where that matters |
+| The Kubernetes watcher misreports node health | It reads the provider's own control plane with a read-only service account and records what Kubernetes said, with the condition's own transition time; it is enrolled as a `provider-integration` key, which contracts can admit or not; a failed read records nothing rather than an outage | The control plane is the provider's: it can be wrong or be changed. That is why the tenant probe exists, and reconcile rules decide whose record counts |
+| One hosted contract's parties reach another's | A ledger hosting several contracts gives each its own configuration, tokens, keyring, data directory and URL; an unknown contract answers like an unknown token, so contract ids are not revealed; each checkpoint names its contract | One witness key signs for every contract on the host, and one process holds all their data: run separate ledgers where parties require isolation by host |
 
-## Out of scope for v0.3
+## Out of scope for v0.4
 
-Hosting many contracts on one ledger, a database backend, rate limiting and single sign-on for the ledger, and attestation of the hosts that run agents and probes.
+A database backend, rate limiting and single sign-on for the ledger, and attestation of the hosts that run agents and probes.
