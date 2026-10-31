@@ -87,7 +87,7 @@ EXCLUDED = {"gpu-010", "gpu-012"}
 def banner(t):
     W, H = 1280, 360
     b = []
-    b.append(text(64, 92, "OPEN SOURCE  ·  APACHE-2.0  ·  PRE-ALPHA v0.2", 14, t["muted"], 600,
+    b.append(text(64, 92, "OPEN SOURCE  ·  APACHE-2.0  ·  PRE-ALPHA v0.3", 14, t["muted"], 600,
                   extra=' letter-spacing="1.5"'))
     b.append(text(60, 168, "GPU Sentinel", 76, t["ink"], 700, extra=' letter-spacing="-1.5"'))
     b.append(text(64, 214, "Signed, replayable evidence of the GPU capacity", 24, t["ink2"]))
@@ -380,10 +380,75 @@ def localisation(t):
                "64 nodes 23 vs 2,016; 128 nodes 27 vs 8,128; 256 nodes 31 vs 32,640; 512 nodes 35 vs 130,816.")
 
 
+# ---------------------------------------------------------------- clocks
+def hm(h, m):
+    return h * 60 + m
+
+
+CLOCK_ROWS = [  # label, (start, end) in minutes after midnight, kind
+    ("Provider: XID 79 to health check", (hm(4, 12), hm(6, 40)), "s1"),
+    ("Tenant: GPU missing to all GPUs back", (hm(4, 13), hm(6, 41)), "s3"),
+    ("count both · latest start · earliest end", (hm(4, 13), hm(6, 40)), "res"),
+    ("count either · provider start · tenant end", (hm(4, 12), hm(6, 41)), "res"),
+]
+
+
+def clocks(t):
+    W, H = 960, 400
+    b = []
+    b.append(text(32, 44, "Whose clock wins? One outage, two records", 20, t["ink"], 650))
+    b.append(text(32, 70, "gpu-003, 3 October 2026. The contract's reconcile rules decide which record starts and ends the outage.",
+                  14, t["ink2"]))
+    lx = 32
+    # two zoomed windows: around the start and around the end
+    wins = [(hm(4, 10), hm(4, 15), 360, 580), (hm(6, 38), hm(6, 43), 660, 880)]
+    top, rowh = 128, 52
+    for w0, w1, x0, x1 in wins:
+        X = lambda m, w0=w0, w1=w1, x0=x0, x1=x1: x0 + (m - w0) / (w1 - w0) * (x1 - x0)
+        for m in range(w0, w1 + 1):
+            b.append(line(X(m), top - 8, X(m), top + rowh * len(CLOCK_ROWS) - 12, t["grid"]))
+            b.append(text(X(m), top - 16, f"{m // 60:02d}:{m % 60:02d}", 11, t["muted"], 400, "middle"))
+    # the elided middle
+    mid = (wins[0][3] + wins[1][2]) / 2
+    b.append(text(mid, top + rowh * len(CLOCK_ROWS) - 2, "≈ 2 h later", 11, t["muted"], 600, "middle"))
+    for i in range(len(CLOCK_ROWS)):
+        y = top + i * rowh
+        b.append(text(mid, y + 16, "· · ·", 13, t["muted"], 600, "middle"))
+    for i, (label, (a, z), kind) in enumerate(CLOCK_ROWS):
+        y = top + i * rowh
+        if i == 2:
+            b.append(line(lx, y - 14, W - 32, y - 14, t["axis"]))
+            b.append(text(lx, y - 22, "", 1, t["ink"]))
+        fill = {"s1": t["s1"], "s3": t["s3"], "res": t["s2"]}[kind]
+        b.append(text(lx, y + 15, label, 13, t["ink"] if kind == "res" else t["ink2"], 600 if kind == "res" else 500))
+        for w0, w1, x0, x1 in wins:
+            X = lambda m, w0=w0, w1=w1, x0=x0, x1=x1: x0 + (m - w0) / (w1 - w0) * (x1 - x0)
+            sa, sz = max(a, w0), min(z, w1)
+            if sz > sa:
+                xa, xz = X(sa), X(sz)
+                rx = 4 if (a >= w0 or z <= w1) else 0
+                b.append(rect(xa, y, xz - xa, 22, fill, rx=rx))
+                if a < w0:
+                    b.append(rect(xa, y, 6, 22, fill))
+                if z > w1:
+                    b.append(rect(xz - 6, y, 6, 22, fill))
+        secs = (z - a) * 60
+        b.append(text(W - 32, y + 16, f"{secs:,} s", 13, t["ink"], 650, "end"))
+    ly = top + rowh * len(CLOCK_ROWS) + 26
+    b.append(text(lx, ly, "The month under each rule: 127,580 node-seconds (both) to 130,860 (either, provider start, tenant end).",
+                  13, t["ink2"]))
+    b.append(text(lx, ly + 20, "Without such a rule, the parties argue about every minute; with it, the contract settles them before anyone compares.",
+                  13, t["ink2"]))
+    return svg(W, H, t, b, "Whose clock wins? One outage, two records",
+               "gpu-003 on 3 October 2026: the provider recorded 04:12 to 06:40, the tenant 04:13 to 06:41. Counting only what both saw "
+               "gives 04:13 to 06:40, 8,820 seconds; counting from the provider's first fault to the tenant's recovery gives 04:12 to "
+               "06:41, 8,940 seconds.")
+
+
 def main():
     out = sys.argv[1]
     os.makedirs(out, exist_ok=True)
-    for name, fn in (("banner", banner), ("sla-statement", terminal), ("sla-month", sla_month),
+    for name, fn in (("banner", banner), ("sla-statement", terminal), ("sla-month", sla_month), ("clock-rules", clocks),
                      ("corroboration", corroboration), ("fault-localisation", localisation)):
         for mode, t in THEMES.items():
             with open(os.path.join(out, f"{name}-{mode}.svg"), "w", encoding="utf-8", newline="\n") as f:
