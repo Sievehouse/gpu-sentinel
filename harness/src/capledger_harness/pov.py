@@ -104,7 +104,7 @@ class Rate:
         return self.hits / self.total if self.total else None
 
 
-def score(trials: list[Trial]) -> dict:
+def score(trials: list[Trial], max_rounds: int = THRESHOLDS["max_localisation_rounds"]) -> dict:
     """Score trials against the thresholds. A threshold without data is
     reported as such, never as passed."""
     at10, at5, below5 = Rate(), Rate(), Rate()
@@ -149,7 +149,7 @@ def score(trials: list[Trial]) -> dict:
         "recall_at_10_percent": check(at10.value(), THRESHOLDS["recall_at_10_percent"]),
         "recall_at_5_percent": check(at5.value(), THRESHOLDS["recall_at_5_percent"]),
         "false_flags_per_100_node_tests": check(ff, THRESHOLDS["false_flags_per_100_node_tests"], higher_is_better=False),
-        "max_localisation_rounds": check(max(rounds) if rounds else None, THRESHOLDS["max_localisation_rounds"], higher_is_better=False),
+        "max_localisation_rounds": check(max(rounds) if rounds else None, max_rounds, higher_is_better=False),
     }
     results = [c["result"] for c in checks.values()]
     return {
