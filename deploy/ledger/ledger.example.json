@@ -1,0 +1,37 @@
+{
+  "apiVersion": "capacity-ledger/v1alpha1",
+  "kind": "LedgerConfig",
+  "contract": "example-neocloud--example-lab--2026",
+  "parties": [
+    {
+      "name": "example-neocloud",
+      "role": "provider",
+      "tokenSha256": "e6c9b5578953829bc2e8cdcc711c3b91eea37f7dabab921857e1cd8b78b2a7e3",
+      "writeRoles": [
+        "provider-agent",
+        "provider-integration"
+      ],
+      "note": "Replace every tokenSha256 with the hash printed by: capledger ledger token --out PARTY.token"
+    },
+    {
+      "name": "example-lab",
+      "role": "customer",
+      "tokenSha256": "375a340d5f943bb02ecff888e23f03183191114d540a19cc9bd4d95aa65fff46",
+      "writeRoles": [
+        "tenant-probe"
+      ]
+    },
+    {
+      "name": "example-insurer",
+      "role": "financier",
+      "tokenSha256": "d0d87b5ed4b11511487c34d7db179ee54ce2fe03c1ead4e2ea0976122891983d",
+      "note": "Reads the feed only while both the provider and the customer consent"
+    },
+    {
+      "name": "example-auditor",
+      "role": "auditor",
+      "tokenSha256": "8a058b13c0c9dce02f65714ee723b78e6a1b9d71c630371d5d4f7a7886cfb891",
+      "note": "Reads everything, writes nothing"
+    }
+  ]
+}
