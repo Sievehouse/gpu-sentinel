@@ -81,6 +81,10 @@ func TestReconciledExample(t *testing.T) {
 	if st.EngineVersion != Semantics030 {
 		t.Fatalf("engine version %s", st.EngineVersion)
 	}
+	// Pinned in docs/sla-spec.md. If this changes, the 0.3 semantics changed.
+	if st.StatementSHA256 != "793920cf0be5f2c1e7ce83614657a28ae27daf291a68e56bbd4857e470879f73" {
+		t.Fatalf("statement hash %s", st.StatementSHA256)
+	}
 	seen := map[string]string{}
 	for _, n := range st.Nodes {
 		for _, in := range n.Incidents {
