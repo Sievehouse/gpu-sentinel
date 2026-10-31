@@ -1,6 +1,6 @@
 # The hosted ledger
 
-`capledger ledger serve` runs one ledger for one contract. Both parties push their signed evidence logs to it, a witness key on the ledger signs a checkpoint of every log every day, the monthly statements sit there with each party's signature, and financiers read a feed once both parties have consented.
+`capledger ledger serve` runs a ledger for a contract (or, since 0.4, [for several](#hosting-several-contracts)). Both parties push their signed evidence logs to it, a witness key on the ledger signs a checkpoint of every log every day, the monthly statements sit there with each party's signature, and financiers read a feed once both parties have consented.
 
 The ledger is deliberately not an authority. It computes nothing: statements are computed and checked by the parties with `capledger sla compute` and `sla verify`, as without a ledger. It verifies everything it accepts against a keyring, but everything it hands out is signed by someone else's key (or by its own witness key, for checkpoints) and can be verified offline. The provider, the customer or a neutral third party can run it.
 
@@ -181,6 +181,29 @@ All endpoints except `/healthz` need `Authorization: Bearer TOKEN`. Errors are J
 - **One writer.** Run a single ledger process per data directory.
 - **Limits.** Pushes up to 64 MiB per request (`ledger push` splits larger ones), other documents up to 16 MiB. There is no rate limiting; put a proxy in front if the ledger faces the internet.
 
+## Hosting several contracts
+
+Since 0.4 one ledger process can host several contracts. Put one configuration per contract in a directory and start the ledger with `--config-dir` (or give `--config` more than once):
+
+```sh
+capledger ledger serve --config-dir /etc/capledger-ledger/contracts \
+  --data /var/lib/capledger-ledger --key-dir /var/lib/capledger-ledger/witness --listen 127.0.0.1:8443
+```
+
+- **Separate keyrings.** Give each contract its own keyring with a `keyring` field in its configuration (a path relative to the configuration file), so that a key enrolled for one contract cannot push to or sign for another. A configuration without one uses `--keyring`.
+
+  ```json
+  {"apiVersion": "capacity-ledger/v1alpha1", "kind": "LedgerConfig",
+   "contract": "neocloud--lab-a--2026", "keyring": "keyrings/lab-a.json", "parties": [ ... ]}
+  ```
+
+- **Separate URLs and data.** Each contract's API is the one above, under `/c/CONTRACT`: the parties of `neocloud--lab-a--2026` use `--server https://ledger.example.com/c/neocloud--lab-a--2026` with every client command. Its data lives in `DATA/contracts/CONTRACT/`. Contract ids must be letters, digits, `.`, `_` and `-`.
+- **Nothing leaks between contracts.** Tokens, logs, statements, consents and feeds belong to one contract. A request for a contract the ledger does not host gets the same `401` as an unknown token, so contract ids are not revealed.
+- **One witness.** One witness key signs every contract's checkpoints; each checkpoint names its contract in its note.
+- **Adding and removing contracts.** Add or remove a configuration file and send `SIGHUP`. A removed contract stops being served, and its data stays on disk; adding the file back serves it again. If any configuration fails to load, nothing changes.
+
+With a single `--config`, the ledger behaves exactly as before: the API is at `/v1` and the data directly under `--data`.
+
 ## Not yet
 
-The ledger in 0.3 stores files on one host and serves one contract. PostgreSQL and object-storage backends for operators with many contracts, single sign-on, and rate limiting are planned; the store interface (`internal/ledger.Store`) is where they plug in.
+The ledger stores files on one host. PostgreSQL and object-storage backends, single sign-on and rate limiting are planned; the store interface (`internal/ledger.Store`) is where they plug in.
