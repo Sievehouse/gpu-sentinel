@@ -574,6 +574,7 @@ func cmdLedgerFeed(args []string, s streams) error {
 func cmdLedgerStatus(args []string, s streams) error {
 	fs := newFlags("ledger status", s)
 	cf := addClientFlags(fs)
+	witnessOut := fs.String("witness-pub", "", "also save the ledger's witness public key (PEM) here, to enrol it with keyring add --role witness")
 	if err := parseFlags(fs, args); err != nil {
 		return err
 	}
@@ -586,6 +587,12 @@ func cmdLedgerStatus(args []string, s streams) error {
 		return err
 	}
 	fmt.Fprintf(s.out, "ledger    contract %s; you are %s (%s); witness key %s\n", info.Contract, info.Party.Name, info.Party.Role, info.Witness.KeyID)
+	if *witnessOut != "" {
+		if err := os.WriteFile(*witnessOut, []byte(info.Witness.PublicKey), 0o644); err != nil {
+			return err
+		}
+		fmt.Fprintf(s.out, "witness public key saved to %s; compare its key id with the operator's before enrolling it\n", *witnessOut)
+	}
 	if info.Party.Role == ledger.RoleFinancier {
 		fmt.Fprintln(s.out, "financiers read the ledger through: capledger ledger feed")
 		return nil
