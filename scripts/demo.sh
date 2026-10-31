@@ -80,4 +80,60 @@ step "Rack-scale example: three NVL72 trays overlap, so the whole rack counts as
 "$CL" sla compute --contract examples/contracts/nvl72-2-racks.json \
   --events examples/events/nvl72-2026-10.jsonl --period 2026-10 --format text | head -8
 
+step "Version 2 of the contract says whose clock counts: from the provider's first fault to the tenant's recovery"
+"$CL" contract check --contract examples/contracts/hgx-16-node-reconciled.yaml
+"$CL" sla compute --contract examples/contracts/hgx-16-node-reconciled.yaml \
+  --events examples/events/hgx-16-node-2026-10-both.jsonl --period 2026-10 --format text | sed -n '1,6p;8,12p'
+
+step "Each party signs the October statement; it counts as agreed only when both accept"
+KR="$WORK/keyring.json"
+for p in provider:"Example Neocloud" customer:"Example Lab"; do
+  role=${p%%:*}; owner=${p#*:}
+  "$CL" keygen --out "$WORK/keys/$role-signer" > /dev/null
+  "$CL" keyring add --keyring "$KR" --pub "$WORK/keys/$role-signer/capledger.pub.pem" --owner "$owner" --role "$role"
+  "$CL" sla sign --statement "$WORK/statement.json" --party "$role" --key-dir "$WORK/keys/$role-signer"
+done
+"$CL" sla verify --statement "$WORK/statement.json" --keyring "$KR" --require provider,customer \
+  --signature "$WORK/statement.provider.sig.json" --signature "$WORK/statement.customer.sig.json"
+
+step "Run a ledger for the contract: both parties push, a witness checkpoints, a financier reads the feed"
+PROBE="$WORK/probe-gpu-003.jsonl"
+"$CL" event emit --log "$PROBE" --key-dir "$WORK/keys/probe-gpu-003" --role tenant-probe --node gpu-003 --type down \
+  --ts 2026-10-03T04:13:00Z --cause tenant:gpu-missing:7/8 --source tenant-probe > /dev/null
+"$CL" keyring import --keyring "$KR" --log "$PROBE" --owner "Example Lab" --role tenant-probe
+"$CL" keygen --out "$WORK/keys/insurer-signer" > /dev/null
+"$CL" keyring add --keyring "$KR" --pub "$WORK/keys/insurer-signer/capledger.pub.pem" --owner "Example Insurer" --role financier
+parties=()
+for p in example-neocloud:provider:provider-agent example-lab:customer:tenant-probe example-insurer:financier:; do
+  IFS=: read -r name role write <<< "$p"
+  hash=$("$CL" ledger token --out "$WORK/$name.token" | awk '/tokenSha256/ {print $2}')
+  roles=""; [ -n "$write" ] && roles=", \"writeRoles\": [\"$write\"]"
+  parties+=("{\"name\": \"$name\", \"role\": \"$role\", \"tokenSha256\": \"$hash\"$roles}")
+done
+cat > "$WORK/ledger.json" <<JSON
+{"apiVersion": "capacity-ledger/v1alpha1", "kind": "LedgerConfig", "contract": "example-neocloud--example-lab--2026",
+ "parties": [$(IFS=,; echo "${parties[*]}")]}
+JSON
+"$CL" ledger serve --config "$WORK/ledger.json" --keyring "$KR" --data "$WORK/ledger-data" \
+  --key-dir "$WORK/keys/witness" --listen 127.0.0.1:0 2> "$WORK/ledger.log" &
+LEDGER_PID=$!
+trap 'kill "$LEDGER_PID" 2>/dev/null || true' EXIT
+for _ in $(seq 50); do grep -q 'http://' "$WORK/ledger.log" && break; sleep 0.1; done
+URL=$(grep -o 'http://127.0.0.1:[0-9]*' "$WORK/ledger.log")
+as() { local who=$1; shift; "$CL" ledger "$@" --server "$URL" --token-file "$WORK/$who.token"; }
+as example-neocloud push --log "$LOG"
+as example-lab push --log "$PROBE"
+as example-lab pull --all --out-dir "$WORK/pulled"
+as example-lab checkpoint --create --out "$WORK/checkpoint.json"
+as example-lab status --witness-pub "$WORK/witness.pub.pem"
+"$CL" keyring add --keyring "$KR" --pub "$WORK/witness.pub.pem" --owner "Ledger operator" --role witness
+"$CL" evidence verify --keyring "$KR" --checkpoint "$WORK/checkpoint.json" --format text \
+  --log "$WORK/pulled/evidence-gpu-003.jsonl" --log "$WORK/pulled/probe-gpu-003.jsonl"
+as example-neocloud publish --statement "$WORK/statement.json" --signature "$WORK/statement.provider.sig.json"
+as example-lab publish --signature "$WORK/statement.customer.sig.json"
+as example-neocloud consent --financier example-insurer --party provider --key-dir "$WORK/keys/provider-signer"
+as example-lab consent --financier example-insurer --party customer --key-dir "$WORK/keys/customer-signer"
+as example-insurer feed --out-dir "$WORK/feed"
+kill "$LEDGER_PID"; wait "$LEDGER_PID" 2>/dev/null || true
+
 printf '\nDone. Files are in %s\n' "$WORK"
