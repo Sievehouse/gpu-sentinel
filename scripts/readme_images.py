@@ -87,7 +87,7 @@ EXCLUDED = {"gpu-010", "gpu-012"}
 def banner(t):
     W, H = 1280, 360
     b = []
-    b.append(text(64, 92, "OPEN SOURCE  ·  APACHE-2.0  ·  PRE-ALPHA v0.3", 14, t["muted"], 600,
+    b.append(text(64, 92, "OPEN SOURCE  ·  APACHE-2.0  ·  PRE-ALPHA v0.4", 14, t["muted"], 600,
                   extra=' letter-spacing="1.5"'))
     b.append(text(60, 168, "GPU Sentinel", 76, t["ink"], 700, extra=' letter-spacing="-1.5"'))
     b.append(text(64, 214, "Signed, replayable evidence of the GPU capacity", 24, t["ink2"]))
