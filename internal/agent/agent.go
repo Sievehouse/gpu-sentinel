@@ -33,8 +33,11 @@ type Config struct {
 	Writer   *evidence.Writer
 	Suppress time.Duration // minimum gap between down events for this node
 	Source   string        // recorded in emitted events
-	Now      func() time.Time
-	Log      io.Writer // human-readable progress log
+	// Redact removes process names and ids from recorded kernel lines
+	// (xid.Redact); classification uses the original line.
+	Redact bool
+	Now    func() time.Time
+	Log    io.Writer // human-readable progress log
 }
 
 // Stats counts what the agent has processed.
@@ -126,6 +129,9 @@ func (a *Agent) HandleRAS(readings []xid.RASCounter) error {
 // The caller holds a.mu.
 func (a *Agent) record(o xid.Observation) error {
 	rule := a.cfg.Policy.Classify(o)
+	if a.cfg.Redact {
+		o = xid.Redact(o)
+	}
 	entry, err := a.cfg.Writer.Append(evidence.KindObservation, ObservationPayload{
 		Node: a.cfg.Node, Observation: o, Action: rule.Action, Summary: rule.Summary, PolicyVersion: a.cfg.Policy.Version,
 	})
