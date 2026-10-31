@@ -67,11 +67,13 @@ func Corroborate(spec *contract.Spec, evsA, evsB []events.Event, labelA, labelB 
 	if labelA == "" || labelB == "" || labelA == labelB {
 		return nil, fmt.Errorf("the two sides need different, non-empty labels")
 	}
-	stA, err := Compute(spec, evsA, p)
+	// Each side is computed on its own, without reconciliation: the point is
+	// to compare what each party recorded, not the combined clock.
+	stA, err := compute(spec, evsA, p, false)
 	if err != nil {
 		return nil, fmt.Errorf("%s: %w", labelA, err)
 	}
-	stB, err := Compute(spec, evsB, p)
+	stB, err := compute(spec, evsB, p, false)
 	if err != nil {
 		return nil, fmt.Errorf("%s: %w", labelB, err)
 	}
@@ -139,6 +141,32 @@ func spans(s interval.Set) []Span {
 		out = append(out, Span{Start: events.FormatTime(iv.Start), End: events.FormatTime(iv.End), Seconds: iv.Len()})
 	}
 	return out
+}
+
+// SplitBySide divides one event set into the provider's and the tenant's
+// under the contract's sources. Maintenance events go to both sides, because
+// both parties' views need the maintenance calendar to apply exclusions.
+func SplitBySide(spec *contract.Spec, evs []events.Event) (prov, ten []events.Event, err error) {
+	if spec.Contract.Sources == nil || spec.Contract.Sources.Tenant == nil {
+		return nil, nil, fmt.Errorf("the contract has no sources.tenant, so events cannot be split by party")
+	}
+	for _, e := range evs {
+		side, ok := spec.SideOf(e.SignerRole, e.Source)
+		if !ok {
+			if spec.IgnoresUnlisted() {
+				continue
+			}
+			return nil, nil, fmt.Errorf("event %s: source %q is not listed in the contract's sources", e.ID, e.Source)
+		}
+		maint := e.Type == events.MaintenanceStart || e.Type == events.MaintenanceEnd
+		if side == contract.SideTenant || maint {
+			ten = append(ten, e)
+		}
+		if side == contract.SideProvider || maint {
+			prov = append(prov, e)
+		}
+	}
+	return prov, ten, nil
 }
 
 // DowntimeSets rebuilds each node's countable downtime from the incidents.
