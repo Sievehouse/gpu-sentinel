@@ -12,7 +12,7 @@ import (
 	"path/filepath"
 )
 
-// Entry kinds written by Capacity Ledger tools.
+// Entry kinds written by GPU Sentinel tools.
 const (
 	KindKey         = "key"         // self-signed key announcement
 	KindObservation = "observation" // raw fault or measurement
