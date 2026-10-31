@@ -1,6 +1,6 @@
 # capledger-harness
 
-The Python half of Capacity Ledger: plans and runs cluster acceptance tests with standard tools, parses their output, compares nodes with their peers and localises faulty nodes.
+The Python half of GPU Sentinel: plans and runs cluster acceptance tests with standard tools, parses their output, compares nodes with their peers and localises faulty nodes.
 
 ```bash
 pip install -e "harness[dev]"
