@@ -1,0 +1,52 @@
+# systemd unit for the ticket-system webhook receiver (capledger watch
+# webhook). Point the ticket system's webhook at it through a TLS-terminating
+# proxy, or pass --tls-cert and --tls-key.
+#
+#   useradd --system --no-create-home --shell /usr/sbin/nologin capledger
+#   install -m 0755 bin/capledger /usr/local/bin/capledger
+#   install -d -m 0755 /etc/capledger-webhook
+#   install -m 0644 mapping.json /etc/capledger-webhook/
+#   install -o capledger -m 0600 webhook-secret.txt /etc/capledger-webhook/   # the service user only
+#   install -m 0644 deploy/systemd/capledger-webhook.service /etc/systemd/system/
+#   systemctl daemon-reload && systemctl enable --now capledger-webhook
+#
+# The mapping (see examples/webhooks/jira-repairs.json) names the secret file
+# relative to itself. Enrol the receiver's key once its log exists; it speaks
+# for every node:
+#   capledger keyring import --keyring keyring.json --log /var/lib/capledger-webhook/tickets.jsonl \
+#     --owner "Example Neocloud" --role provider-integration --bind-nodes=false
+[Unit]
+Description=GPU Sentinel ticket webhook receiver (capledger watch webhook)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+ExecStart=/usr/local/bin/capledger watch webhook \
+  --mapping /etc/capledger-webhook/mapping.json \
+  --log /var/lib/capledger-webhook/tickets.jsonl \
+  --key-dir /var/lib/capledger-webhook/keys \
+  --listen 127.0.0.1:8090
+Restart=on-failure
+User=capledger
+Group=capledger
+StateDirectory=capledger-webhook
+StateDirectoryMode=0750
+ConfigurationDirectory=capledger-webhook
+UMask=0027
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictAddressFamilies=AF_INET AF_INET6
+RestrictNamespaces=yes
+LockPersonality=yes
+MemoryDenyWriteExecute=yes
+SystemCallFilter=@system-service
+CapabilityBoundingSet=
+
+[Install]
+WantedBy=multi-user.target
