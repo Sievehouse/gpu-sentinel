@@ -19,7 +19,7 @@ import (
 )
 
 // version is overridden at build time with -ldflags "-X main.version=...".
-var version = "0.4.0"
+var version = "0.5.0"
 
 func main() { os.Exit(run(os.Args[1:], os.Stdin, os.Stdout, os.Stderr)) }
 
@@ -35,12 +35,15 @@ Collect
                     a benchmark floor); write signed evidence and heartbeats
   watch kubernetes  provider side: turn Kubernetes node health (Ready, NVSentinel and
                     node-problem-detector conditions, taints, GPU counts) into signed events
+  watch webhook     provider side: receive ticket-system webhooks (repairs, maintenance)
+                    and record them as signed events
 
 SLA
   sla compute       compute a sealed SLA statement from a contract and events
   sla verify        check a statement's seal, replay it, and check co-signatures
   sla sign          sign a statement as one party: accept or dispute
   sla corroborate   compare the downtime two independent sources recorded
+  sla compare       compare a statement with the provider's own downtime report (pilots)
   contract check    validate a contract spec (YAML or JSON) and print its digest
 
 Evidence
@@ -54,7 +57,7 @@ Evidence
   bundle create     pack files into a signed evidence bundle (.tar.gz)
   bundle verify     verify a bundle and optionally extract it
 
-Ledger (one hosted ledger per contract)
+Ledger (hosted ledger for one contract or several)
   ledger serve      run the ledger: logs, witness checkpoints, statements, consents, feed
   ledger token      create a party's bearer token and the hash for the configuration
   ledger push       push evidence logs; only entries the ledger does not hold yet
@@ -64,6 +67,8 @@ Ledger (one hosted ledger per contract)
   ledger consent    grant or revoke a financier's access to the feed
   ledger feed       read the feed: statements, signatures and checkpoints, as files
   ledger status     show logs, the latest checkpoint and co-signing status
+  ledger snapshot   write a contract's ledger data as one signed bundle (backup, air gap)
+  ledger restore    verify a snapshot against a keyring and restore it into a new directory
 
 Keys
   keygen            create an Ed25519 signing key pair
@@ -91,10 +96,12 @@ var commands = map[string]commandFunc{
 	"agent":               cmdAgent,
 	"probe":               cmdProbe,
 	"watch kubernetes":    cmdWatchKubernetes,
+	"watch webhook":       cmdWatchWebhook,
 	"sla compute":         cmdSLACompute,
 	"sla verify":          cmdSLAVerify,
 	"sla sign":            cmdSLASign,
 	"sla corroborate":     cmdSLACorroborate,
+	"sla compare":         cmdSLACompare,
 	"contract check":      cmdContractCheck,
 	"event emit":          cmdEventEmit,
 	"events export":       cmdEventsExport,
@@ -113,6 +120,8 @@ var commands = map[string]commandFunc{
 	"ledger consent":      cmdLedgerConsent,
 	"ledger feed":         cmdLedgerFeed,
 	"ledger status":       cmdLedgerStatus,
+	"ledger snapshot":     cmdLedgerSnapshot,
+	"ledger restore":      cmdLedgerRestore,
 	"keygen":              cmdKeygen,
 	"keyring add":         cmdKeyringAdd,
 	"keyring import":      cmdKeyringImport,
