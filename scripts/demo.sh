@@ -46,6 +46,11 @@ for view in 2026-10-03T0415:2026-10-03T04:15:00Z 2026-10-03T0645:2026-10-03T06:4
     --down-condition '*' --expected-gpus 8 --log "$WORK/k8s-watcher.jsonl" --key-dir "$WORK/keys/k8s-watcher"
 done
 
+step "Tickets: Jira webhooks open and close an outage; a redelivered webhook changes nothing"
+"$CL" watch webhook --mapping examples/webhooks/jira-repairs.json --log "$WORK/tickets.jsonl" --key-dir "$WORK/keys/webhook" \
+  --replay examples/webhooks/01-repair-opened.json --replay examples/webhooks/02-repair-redelivered.json \
+  --replay examples/webhooks/03-repair-closed.json 2>/dev/null
+
 step "Heartbeats: a node that went silent for 27 minutes shows up as unmonitored time"
 HB="$WORK/evidence-gpu-001.jsonl"
 for t in 00:00 00:01 00:02 00:30 00:31; do
@@ -68,6 +73,10 @@ step "The same month with three unmonitored stretches, under a contract that cou
 "$CL" sla compute --contract examples/contracts/hgx-16-node-strict.yaml \
   --events examples/events/hgx-16-node-2026-10.jsonl --events examples/events/hgx-16-node-2026-10-gaps.jsonl \
   --period 2026-10 --format text | head -7
+
+step "Pilot: the statement against the provider's own downtime report"
+"$CL" sla compare --statement "$WORK/statement.json" --provider-report examples/pilot/provider-report-2026-10.csv \
+  --contract examples/contracts/hgx-16-node.yaml
 
 step "Compare the provider's record with the customer's own probe"
 "$CL" sla corroborate --contract examples/contracts/hgx-16-node.yaml --period 2026-10 \
@@ -144,5 +153,9 @@ as example-neocloud consent --financier example-insurer --party provider --key-d
 as example-lab consent --financier example-insurer --party customer --key-dir "$WORK/keys/customer-signer"
 as example-insurer feed --out-dir "$WORK/feed"
 kill "$LEDGER_PID"; wait "$LEDGER_PID" 2>/dev/null || true
+
+step "Snapshot the ledger and restore it elsewhere, only after everything in it verifies against the keyring"
+"$CL" ledger snapshot --data "$WORK/ledger-data" --config "$WORK/ledger.json" --key-dir "$WORK/keys/witness" --out "$WORK/ledger-snapshot.tar.gz"
+"$CL" ledger restore --snapshot "$WORK/ledger-snapshot.tar.gz" --keyring "$KR" --data "$WORK/restored-ledger"
 
 printf '\nDone. Files are in %s\n' "$WORK"
