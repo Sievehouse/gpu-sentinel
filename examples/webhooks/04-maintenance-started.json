@@ -1,0 +1,16 @@
+{
+  "webhookEvent": "jira:issue_updated",
+  "timestamp": 1,
+  "issue": {
+    "key": "OPS-4730",
+    "fields": {
+      "summary": "gpu-010: firmware update",
+      "customfield_10042": "gpu-010",
+      "status": {
+        "name": "In Maintenance"
+      },
+      "updated": "2026-10-14T02:00:00.000+0000",
+      "created": "2026-10-10T00:00:00.000+0000"
+    }
+  }
+}
