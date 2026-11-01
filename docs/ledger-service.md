@@ -157,7 +157,7 @@ All endpoints except `/healthz` need `Authorization: Bearer TOKEN`. Errors are J
 
 | Method and path | Who | What |
 | --- | --- | --- |
-| `GET /healthz` | anyone | `ok` |
+| `GET /healthz` | anyone | `ok` (never rate-limited) |
 | `GET /v1/info` | every party | Contract, the calling party, the witness key |
 | `GET /v1/logs` | provider, customer, auditor | Every log: name, owner, entries, last hash, Merkle root |
 | `GET /v1/logs/{name}?from=N` | provider, customer, auditor | The log's entries from index N, as JSON Lines |
@@ -179,7 +179,25 @@ All endpoints except `/healthz` need `Authorization: Bearer TOKEN`. Errors are J
 - **Rotating a token.** Create a new one with `ledger token`, replace the hash in the configuration, reload.
 - **Rotating the witness key.** Stop the ledger, move the old key directory aside, start it (a new key is created), enrol the new key in every keyring and set `notAfter` on the old entry.
 - **One writer.** Run a single ledger process per data directory.
-- **Limits.** Pushes up to 64 MiB per request (`ledger push` splits larger ones), other documents up to 16 MiB. There is no rate limiting; put a proxy in front if the ledger faces the internet.
+- **Limits.** Pushes up to 64 MiB per request (`ledger push` splits larger ones), other documents up to 16 MiB.
+- **Rate limiting.** Each token may make 10 requests per second, with bursts of 50 (`--rate-limit`, `--burst`; `--rate-limit 0` turns it off); requests without a token are limited per client address. Over the limit the ledger answers `429` with `Retry-After`, and the client commands wait and retry up to four times. One party, or one stolen token, therefore cannot starve the others. Clients that send random tokens are limited per token: if the ledger faces the internet, also limit by address in the proxy in front of it.
+
+## Snapshots, backups and air gaps
+
+`ledger snapshot` packs one contract's data (logs and their owners, checkpoints, statements, signatures and consents) into a signed evidence bundle; `ledger restore` verifies it and writes it into a new data directory. Use it to back a ledger up, hand it to an auditor, move it to a new host, or carry it into a sovereign or air-gapped site that runs its own ledger.
+
+```sh
+capledger ledger snapshot --data /var/lib/capledger-ledger/data --config /etc/capledger-ledger/ledger.json \
+  --key-dir /var/lib/capledger-ledger/witness --out ledger-2026-10-31.tar.gz
+
+capledger ledger restore --snapshot ledger-2026-10-31.tar.gz --keyring keyring.json \
+  --data /srv/ledger/data --contract example-neocloud--example-lab--2026
+```
+
+- **Consistent while running.** Logs are cut at their last complete line, and every other file is written atomically, so the ledger need not stop.
+- **Nothing is restored unless everything verifies.** The bundle's signature (its signer must be in the keyring, valid at the snapshot's time), every log (chain, signatures, validity windows and node bindings), every checkpoint (its signature, and that the logs still extend it), every statement's seal, every signature and every consent. The target must be new or empty, and a failed restore leaves nothing behind.
+- **Only ledger data.** A snapshot holds no configuration, tokens or private keys. Bring the configuration and keyring separately, and give the restored ledger its own witness key.
+- **With several contracts,** snapshot each contract's directory (`DATA/contracts/CONTRACT`) on its own.
 
 ## Hosting several contracts
 
@@ -206,4 +224,4 @@ With a single `--config`, the ledger behaves exactly as before: the API is at `/
 
 ## Not yet
 
-The ledger stores files on one host. PostgreSQL and object-storage backends, single sign-on and rate limiting are planned; the store interface (`internal/ledger.Store`) is where they plug in.
+The ledger stores files on one host. PostgreSQL and object-storage backends and single sign-on are planned; the store interface (`internal/ledger.Store`) is where they plug in. A database driver is a third-party dependency, which the project avoids in the code that counterparties must audit, so it will come as an optional build.
