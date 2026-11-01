@@ -2,6 +2,25 @@
 
 All notable changes to GPU Sentinel (called Capacity Ledger until 0.2). Before version 1.0, minor versions may extend formats; every such change is listed here, and existing logs, statements and contracts keep working.
 
+## 0.5.0 (2026-11-01)
+
+### Added
+
+- **Ticket systems.** `capledger watch webhook` receives webhooks from a ticket or incident system (Jira, ServiceNow, PagerDuty, Opsgenie or an in-house tool) and records repairs and maintenance as signed events. A mapping file says where the node, status, time, ticket id and notice time are in the JSON and which statuses mean down, up, degraded or maintenance; statuses can be marked customer-caused. Deliveries must carry an HMAC-SHA256 signature or a bearer token. Only state changes are recorded, and deliveries dated before a node's last event are refused, so redelivered and replayed webhooks change nothing. `--replay` processes saved deliveries. Examples are in `examples/webhooks/`, and [docs/tickets.md](docs/tickets.md) explains the mapping.
+- **Rate limiting for the ledger.** `ledger serve` limits each token to 10 requests per second with bursts of 50 (`--rate-limit`, `--burst`; 0 turns it off) and answers `429` with `Retry-After`. The client commands wait and retry.
+- **Ledger snapshots.** `ledger snapshot` writes one contract's ledger data as a signed bundle, consistent while the ledger runs; `ledger restore` verifies the signer, every log, checkpoint, statement, signature and consent against a keyring before writing anything into a new directory. For backups, audits, moving hosts and air-gapped sites.
+- **Pilot comparison.** `capledger sla compare` compares a statement with the downtime the provider reports by its own means (a CSV of node and seconds), node by node, flags differences above a tolerance and, with the contract, shows the credit each set of figures implies. `examples/pilot/` holds a worked example, and the [proof-of-value runbook](docs/proof-of-value.md) shows how to read it.
+- **systemd units** for the agent (`deploy/systemd/capledger-agent.service`, reading kern.log without root, with redaction) and the webhook receiver.
+
+### Changed
+
+- The SLA engine is unchanged (still 0.3.0): every statement keeps its hash.
+- Rate limiting is on by default. A client that floods a ledger now gets `429` instead of being served.
+
+### Upgrading from 0.4
+
+- Nothing changes for logs, statements, contracts and ledgers. If an automation sends more than 50 requests at once to a ledger, raise `--burst` or `--rate-limit`, or turn limiting off with `--rate-limit 0`.
+
 ## 0.4.0 (2026-11-01)
 
 ### Added
