@@ -68,7 +68,7 @@ spec:
             - { name: state, mountPath: /var/lib/capledger }
       containers:
         - name: agent
-          image: ghcr.io/sievehouse/gpu-sentinel-agent:0.4.0   # build with deploy/docker/Dockerfile.agent
+          image: ghcr.io/sievehouse/gpu-sentinel-agent:0.5.0   # build with deploy/docker/Dockerfile.agent
           args:
             - agent
             - --node=$(NODE_NAME)
