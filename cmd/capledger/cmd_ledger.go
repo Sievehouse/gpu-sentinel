@@ -39,8 +39,13 @@ func cmdLedgerServe(args []string, s streams) error {
 	tlsCert := fs.String("tls-cert", "", "TLS certificate (PEM); without it, serve behind a TLS-terminating proxy")
 	tlsKey := fs.String("tls-key", "", "TLS private key (PEM)")
 	cpEvery := fs.Duration("checkpoint-every", 24*time.Hour, "sign a checkpoint of every changed log this often; 0 disables")
+	rate := fs.Float64("rate-limit", 10, "requests per second allowed per token (or per address without one); 0 disables")
+	burst := fs.Int("burst", 50, "requests a token may make at once before --rate-limit applies")
 	if err := parseFlags(fs, args); err != nil {
 		return err
+	}
+	if *rate < 0 || *burst < 1 {
+		return usagef("--rate-limit must be 0 or more and --burst at least 1")
 	}
 	if err := required("data", *dataDir, "key-dir", *keyDir); err != nil {
 		return err
@@ -132,7 +137,7 @@ func cmdLedgerServe(args []string, s streams) error {
 	if err != nil {
 		return err
 	}
-	hs := &http.Server{Handler: handler, ReadHeaderTimeout: 10 * time.Second}
+	hs := &http.Server{Handler: ledger.RateLimit(handler, *rate, *burst), ReadHeaderTimeout: 10 * time.Second}
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 	hup := make(chan os.Signal, 1)
@@ -728,4 +733,110 @@ func cmdLedgerStatus(args []string, s streams) error {
 			orNone(set.CoSign.AcceptedBy), orNone(set.CoSign.DisputedBy))
 	}
 	return tw.Flush()
+}
+
+func cmdLedgerSnapshot(args []string, s streams) error {
+	fs := newFlags("ledger snapshot", s)
+	dataDir := fs.String("data", "", "the contract's data directory (with --config-dir: DATA/contracts/CONTRACT)")
+	contractID := fs.String("contract", "", "the contract id the data belongs to (or --config)")
+	configPath := fs.String("config", "", "the contract's ledger configuration, to read the contract id from")
+	out := fs.String("out", "", "snapshot file to write (.tar.gz)")
+	keyPath := fs.String("key", "", "private signing key (PEM)")
+	keyDir := fs.String("key-dir", "", "directory holding the signing key, such as the witness key (created on first use)")
+	note := fs.String("note", "", "free-text note recorded in the snapshot")
+	if err := parseFlags(fs, args); err != nil {
+		return err
+	}
+	if err := required("data", *dataDir, "out", *out); err != nil {
+		return err
+	}
+	if (*contractID == "") == (*configPath == "") {
+		return usagef("give --contract or --config")
+	}
+	if *configPath != "" {
+		cfg, err := ledger.LoadConfig(*configPath)
+		if err != nil {
+			return err
+		}
+		*contractID = cfg.Contract
+	}
+	priv, err := signingKey(*keyPath, *keyDir, s)
+	if err != nil {
+		return err
+	}
+	tmp, err := os.CreateTemp(filepath.Dir(*out), ".capledger-snapshot-*")
+	if err != nil {
+		return err
+	}
+	defer os.Remove(tmp.Name())
+	m, err := ledger.Snapshot(tmp, *dataDir, *contractID, *note, priv, time.Now())
+	if cerr := tmp.Close(); err == nil {
+		err = cerr
+	}
+	if err != nil {
+		return err
+	}
+	if err := os.Chmod(tmp.Name(), 0o640); err != nil {
+		return err
+	}
+	if err := os.Rename(tmp.Name(), *out); err != nil {
+		return err
+	}
+	id, err := m.ID()
+	if err != nil {
+		return err
+	}
+	fmt.Fprintf(s.out, "wrote %s: contract %s, %d files, %d bytes, signed by key %s\nsnapshot id %s\n", *out, *contractID, len(m.Files), m.TotalBytes(), m.Signer.KeyID, id)
+	return nil
+}
+
+func cmdLedgerRestore(args []string, s streams) error {
+	fs := newFlags("ledger restore", s)
+	snapshot := fs.String("snapshot", "", "snapshot file written by ledger snapshot")
+	keyringPath := fs.String("keyring", "", "keyring to verify the snapshot's signer, logs, checkpoints, statements, signatures and consents against")
+	dataDir := fs.String("data", "", "new or empty data directory to restore into")
+	contractID := fs.String("contract", "", "refuse a snapshot of any other contract")
+	format := fs.String("format", "text", "text or json")
+	if err := parseFlags(fs, args); err != nil {
+		return err
+	}
+	if err := required("snapshot", *snapshot, "keyring", *keyringPath, "data", *dataDir); err != nil {
+		return err
+	}
+	if err := checkFormat(*format); err != nil {
+		return err
+	}
+	kr, err := keyring.Load(*keyringPath)
+	if err != nil {
+		return err
+	}
+	trust := func(id string, created time.Time) (ed25519.PublicKey, error) {
+		e, err := kr.KeyAt(id, created)
+		if err != nil {
+			return nil, err
+		}
+		return e.Public(), nil
+	}
+	rep, err := ledger.Restore(*snapshot, trust, kr, *dataDir, *contractID)
+	if rep == nil {
+		return err
+	}
+	if *format == "json" {
+		if werr := writeJSON(s.out, rep); werr != nil {
+			return werr
+		}
+	} else {
+		fmt.Fprintf(s.out, "snapshot   %s\ncontract   %s\ncreated    %s\nholds      %d log(s) with %d entries, %d checkpoint(s), %d statement(s), %d signature(s), %d consent(s)\n",
+			rep.BundleID, rep.Contract, rep.Created, rep.Logs, rep.Entries, rep.Checkpoints, rep.Statements, rep.Signatures, rep.Consents)
+		for _, p := range rep.Problems {
+			fmt.Fprintf(s.out, "problem    %s\n", p)
+		}
+		if err == nil {
+			fmt.Fprintf(s.out, "restored into %s; serve it with ledger serve --data %s\n", *dataDir, *dataDir)
+		}
+	}
+	if err != nil {
+		return codedError{1, err.Error()}
+	}
+	return nil
 }
