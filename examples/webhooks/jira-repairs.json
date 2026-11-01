@@ -1,0 +1,26 @@
+{
+  "apiVersion": "capacity-ledger/v1alpha1",
+  "kind": "WebhookMapping",
+  "source": "jira-repairs",
+  "auth": {
+    "hmacSecretFile": "jira-webhook-secret.txt",
+    "hmacHeader": "X-Hub-Signature"
+  },
+  "fields": {
+    "node": "issue.fields.customfield_10042",
+    "status": "issue.fields.status.name",
+    "time": "issue.fields.updated",
+    "ticket": "issue.key",
+    "summary": "issue.fields.summary",
+    "noticeTs": "issue.fields.created"
+  },
+  "statuses": {
+    "In Repair": "down",
+    "Customer Caused": "down",
+    "Repaired": "up",
+    "Closed": "up",
+    "In Maintenance": "maintenance_start",
+    "Maintenance Done": "maintenance_end"
+  },
+  "customerCaused": ["Customer Caused"]
+}
