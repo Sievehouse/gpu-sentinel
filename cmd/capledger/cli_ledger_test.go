@@ -139,4 +139,39 @@ func TestLedgerCLI(t *testing.T) {
 		t.Fatalf("witness key from the ledger differs:\n%s\n%s", got, want)
 	}
 	wantExit(t, 2, "ledger", "push", "--log", at("gpu-003.jsonl"))
+
+	// A snapshot of the whole ledger crosses an air gap and is restored
+	// only after everything in it verifies.
+	out = mustRun(t, "ledger", "snapshot", "--data", at("data"), "--config", at("ledger.json"), "--key-dir", at("witness"), "--out", at("snap.tar.gz"))
+	if !strings.Contains(out, "contract example-neocloud--example-lab--2026") {
+		t.Fatalf("snapshot: %s", out)
+	}
+	out = mustRun(t, "ledger", "restore", "--snapshot", at("snap.tar.gz"), "--keyring", kr, "--data", at("restored"), "--contract", "example-neocloud--example-lab--2026")
+	if !strings.Contains(out, "2 log(s) with 5 entries, 1 checkpoint(s), 1 statement(s), 2 signature(s), 2 consent(s)") {
+		t.Fatalf("restore: %s", out)
+	}
+	restored, err := ledger.OpenStore(at("restored"))
+	if err != nil || len(restored.Logs()) != 2 {
+		t.Fatalf("restored store: %v", err)
+	}
+	wantExit(t, 1, "ledger", "restore", "--snapshot", at("snap.tar.gz"), "--keyring", kr, "--data", at("restored"))
+	wantExit(t, 1, "ledger", "restore", "--snapshot", at("snap.tar.gz"), "--keyring", kr, "--data", at("other"), "--contract", "another")
+	// Without the agent's key, the logs do not verify and nothing is restored.
+	partial := keyring.New()
+	for _, e := range krl.Keys {
+		if e.Role != "provider-agent" {
+			partial.Add(e)
+		}
+	}
+	partial.Save(at("partial.json"))
+	if out := wantExit(t, 1, "ledger", "restore", "--snapshot", at("snap.tar.gz"), "--keyring", at("partial.json"), "--data", at("bad")); !strings.Contains(out, "nothing was restored") {
+		t.Fatalf("partial keyring: %s", out)
+	}
+	if _, err := os.Stat(at("bad")); err == nil {
+		entries, _ := os.ReadDir(at("bad"))
+		if len(entries) > 0 {
+			t.Fatal("a failed restore left data behind")
+		}
+	}
+	wantExit(t, 2, "ledger", "snapshot", "--data", at("data"), "--out", at("x.tar.gz"), "--key-dir", at("witness"))
 }
