@@ -364,3 +364,52 @@ func orDash(v string) string {
 	}
 	return v
 }
+
+func cmdSLACompare(args []string, s streams) error {
+	fs := newFlags("sla compare", s)
+	statementPath := fs.String("statement", "", "statement computed from signed evidence (sla compute --out)")
+	reportPath := fs.String("provider-report", "", "the provider's own downtime per node: CSV of node,downtime_seconds")
+	contractPath := fs.String("contract", "", "the statement's contract, to work out the credit the provider's figures imply")
+	tolerance := fs.Duration("tolerance", 5*time.Minute, "flag nodes whose figures differ by more than this")
+	format := fs.String("format", "text", "text or json")
+	if err := parseFlags(fs, args); err != nil {
+		return err
+	}
+	if err := required("statement", *statementPath, "provider-report", *reportPath); err != nil {
+		return err
+	}
+	if err := checkFormat(*format); err != nil {
+		return err
+	}
+	if *tolerance < 0 {
+		return usagef("--tolerance must not be negative")
+	}
+	st, err := sla.ReadStatement(*statementPath)
+	if err != nil {
+		return err
+	}
+	f, err := os.Open(*reportPath)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+	rep, err := sla.ReadProviderReport(f)
+	if err != nil {
+		return fmt.Errorf("%s: %w", *reportPath, err)
+	}
+	var spec *contract.Spec
+	if *contractPath != "" {
+		if spec, err = contract.Load(*contractPath); err != nil {
+			return err
+		}
+	}
+	cmp, err := sla.Compare(st, rep, int64(tolerance.Seconds()), spec)
+	if err != nil {
+		return err
+	}
+	if *format == "json" {
+		return writeJSON(s.out, cmp)
+	}
+	_, err = io.WriteString(s.out, cmp.Text())
+	return err
+}
