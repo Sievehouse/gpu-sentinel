@@ -1,0 +1,16 @@
+{
+  "webhookEvent": "jira:issue_updated",
+  "timestamp": 1,
+  "issue": {
+    "key": "OPS-4711",
+    "fields": {
+      "summary": "gpu-003: GPU fell off the bus (XID 79), reseat",
+      "customfield_10042": "gpu-003",
+      "status": {
+        "name": "Repaired"
+      },
+      "updated": "2026-10-03T06:40:00.000+0000",
+      "created": "2026-10-03T04:18:00.000+0000"
+    }
+  }
+}
