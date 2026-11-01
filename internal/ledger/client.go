@@ -40,11 +40,31 @@ type APIError struct {
 	Status  int
 	Message string
 	Head    *LogInfo
+	// RetryAfter is the server's Retry-After, for 429 answers.
+	RetryAfter time.Duration
 }
 
 func (e *APIError) Error() string { return fmt.Sprintf("server: %s (HTTP %d)", e.Message, e.Status) }
 
+// MaxRetryWait caps how long the client waits on a 429 before retrying;
+// a ledger asking for longer gets the error back instead.
+var MaxRetryWait = 30 * time.Second
+
+// do sends one request. When the ledger answers 429 (rate limited) it waits
+// as long as Retry-After says, up to MaxRetryWait, and tries again, at most
+// four times.
 func (c *Client) do(method, path string, body []byte, out any) error {
+	for attempt := 0; ; attempt++ {
+		err := c.once(method, path, body, out)
+		var ae *APIError
+		if attempt >= 4 || !errors.As(err, &ae) || ae.Status != http.StatusTooManyRequests || ae.RetryAfter > MaxRetryWait {
+			return err
+		}
+		time.Sleep(ae.RetryAfter)
+	}
+}
+
+func (c *Client) once(method, path string, body []byte, out any) error {
 	var rd io.Reader
 	if body != nil {
 		rd = bytes.NewReader(body)
@@ -74,7 +94,11 @@ func (c *Client) do(method, path string, body []byte, out any) error {
 		if json.Unmarshal(raw, &e) != nil || e.Error == "" {
 			e.Error = strings.TrimSpace(string(raw))
 		}
-		return &APIError{Status: resp.StatusCode, Message: e.Error, Head: e.Head}
+		ae := &APIError{Status: resp.StatusCode, Message: e.Error, Head: e.Head}
+		if secs, err := strconv.Atoi(resp.Header.Get("Retry-After")); err == nil && secs >= 0 {
+			ae.RetryAfter = time.Duration(secs) * time.Second
+		}
+		return ae
 	}
 	switch v := out.(type) {
 	case nil:
