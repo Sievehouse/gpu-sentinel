@@ -103,6 +103,38 @@ make build
 cd harness && CAPLEDGER_BIN=../bin/capledger CAPLEDGER_DIFF_CASES=5000 pytest -q tests/test_sla_reference.py
 ```
 
+## 5. A pilot: the month's statement against the provider's own figures
+
+The proof above shows that GPU Sentinel finds faults. A pilot shows what that is worth: run the agents (and, if the customer agrees, the probe) on a few real nodes for a month, compute the statement, and compare it with the downtime the provider reports by its own means, such as its status page, its SLA report or its monitoring. Put the provider's figures in a CSV with one line per node:
+
+```text
+node,downtime_seconds
+gpu-003,7200
+gpu-016,28800
+```
+
+```bash
+capledger sla compare --statement statement.json --provider-report provider-report.csv \
+  --contract contract.yaml --tolerance 5m
+```
+
+With `examples/pilot/provider-report-2026-10.csv` and the October example statement:
+
+```text
+statement   availability 99.7021%, downtime 127680 node-seconds, credit 5% = 15000.00 USD
+provider    availability 99.9160%, downtime 36000 node-seconds, credit 0% = 0.00 USD
+Flagged     5 node(s) differ by more than 300 s
+
+Node            statement   provider  difference
+gpu-003              8880       7200       -1680  <-
+gpu-005              3600          0       -3600  <-
+gpu-011              7200          0       -7200  <-
+gpu-014             14400          0      -14400  <-
+gpu-016             93600      28800      -64800  <-
+```
+
+A negative difference means the provider reports less downtime than the signed evidence shows. Each flagged node is a question to ask: maintenance announced too late (gpu-011), a degraded node the status page does not count (gpu-014), an outage that started in the previous month (gpu-005), or a repair that took longer than the ticket says (gpu-016). The answers, not the tool, decide whether the gap is real; the statement's incidents cite the events behind every second. `--format json` gives the same comparison for a spreadsheet.
+
 ## What to keep
 
-The truth file, every trial's results and report, the score and the overhead measurement. Pack them into one signed bundle with `capledger bundle create --type acceptance`, so the proof itself is evidence.
+The truth file, every trial's results and report, the score, the overhead measurement and, for a pilot, the statement, the provider's report and the comparison. Pack them into one signed bundle with `capledger bundle create --type acceptance`, so the proof itself is evidence.
