@@ -41,7 +41,7 @@ flowchart TB
 | --- | --- | --- |
 | Agent | Parse NVIDIA XID/SXID and AMD amdgpu kernel messages and AMD RAS counters, record every one as a signed observation, emit `down` events for node-level faults per the policy, count GPUs, write heartbeats | Remediation, draining, scheduling, closing incidents |
 | Tenant probe | From inside the customer's allocation, check that every GPU is visible and (optionally) that a benchmark stays above a floor; write signed events and heartbeats to the customer's own log | Diagnosing why a GPU is missing |
-| Integrations (Slurm watcher; Kubernetes node watcher, which also reads NVSentinel and node-problem-detector conditions; later ticketing) | Turn the provider's own repair and health state into `down` / `up` and `degraded` events | Deciding what the contract means |
+| Integrations (Slurm watcher; Kubernetes node watcher, which also reads NVSentinel and node-problem-detector conditions; ticket-system webhook receiver) | Turn the provider's own repair, maintenance and health state into `down` / `up`, `degraded` and `maintenance` events | Deciding what the contract means |
 | Acceptance harness | Plan and run standard tests (NVIDIA or AMD), parse results, compare nodes with peers, localise faulty nodes, produce verdicts; the CLI signs the results as a bundle | Certifying the absence of defects |
 | Proof-of-value kit | Inject the roadmap's faults on test nodes and undo them, plan the trial matrix, score detections against the pass thresholds, measure agent overhead | Running on production clusters |
 | Evidence log | Append-only, hash-chained, signed JSON Lines; one writer and one key per file | Proving its newest entries were not cut off (checkpoints do) |
@@ -51,8 +51,9 @@ flowchart TB
 | SLA engine | Contract spec + events + period → statement with exact arithmetic; sources allow-list; reconciliation of the two parties' clocks; replay verification; corroboration of two event sets | Interpreting free-text contracts |
 | Statement signatures | Each party's signed `accept` or `dispute` of a sealed statement; co-signing checks | Resolving disputes |
 | Evidence bundles | Freeze a set of files (an acceptance report and its raw results, a statement and its inputs) under one signature | Storing them |
-| Ledger service | Receive and verify pushed log entries, keep one owner per log, sign witness checkpoints, keep statements, signatures and consents, serve the financier feed; one contract per process, or several from one configuration directory, each with its own keyring, data and URL | Computing statements, deciding disputes, holding private keys of the parties |
+| Ledger service | Receive and verify pushed log entries, keep one owner per log, sign witness checkpoints, keep statements, signatures and consents, serve the financier feed; one contract per process, or several from one configuration directory, each with its own keyring, data and URL; per-token rate limiting; signed snapshots that restore only after they verify | Computing statements, deciding disputes, holding private keys of the parties |
 | SLA reference implementation | An independent Python implementation of the SLA rules, compared with the engine in CI | Producing statements for contract use |
+| Pilot comparison | Compare a statement with the downtime the provider reports by its own means, node by node, and the credit each implies | Deciding which figure is right |
 
 ## Data flow and consistency
 
@@ -80,8 +81,9 @@ flowchart TB
 
 ## Deployment shapes
 
-- **Today (v0.4):** the agent as a Kubernetes DaemonSet or systemd unit on each GPU node, each with its own key; the Slurm watcher on the controller, or the Kubernetes node watcher in the cluster (`deploy/kubernetes/node-watcher.yaml`); the tenant probe inside the customer's jobs; a ledger (`deploy/ledger/capledger-ledger.service` or `deploy/kubernetes/ledger-statefulset.yaml`) for one contract or, with `--config-dir`, for several, run by the provider, the customer or a neutral operator; the CLI wherever statements are computed, signed, replayed or corroborated, on Linux, macOS or Windows.
-- **Planned:** PostgreSQL and object-storage backends for the ledger behind the same store interface, for operators who host many contracts; a self-hosted bundle for sovereign or air-gapped sites. A modular monolith, not microservices.
+- **Today (v0.5):** the agent as a Kubernetes DaemonSet or systemd unit (`deploy/systemd/capledger-agent.service`) on each GPU node, each with its own key; the Slurm watcher on the controller, or the Kubernetes node watcher in the cluster (`deploy/kubernetes/node-watcher.yaml`); the webhook receiver for the provider's ticket system (`deploy/systemd/capledger-webhook.service`); the tenant probe inside the customer's jobs; a ledger (`deploy/ledger/capledger-ledger.service` or `deploy/kubernetes/ledger-statefulset.yaml`) for one contract or, with `--config-dir`, for several, run by the provider, the customer or a neutral operator; the CLI wherever statements are computed, signed, replayed or corroborated, on Linux, macOS or Windows.
+- **Sovereign or air-gapped sites** run their own ledger and receive data as signed snapshots (`ledger snapshot`, `ledger restore`), which verify completely before anything is written.
+- **Planned:** PostgreSQL and object-storage backends for the ledger behind the same store interface, as an optional build, for operators who host many contracts. A modular monolith, not microservices.
 
 ## Extension points
 
