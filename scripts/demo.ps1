@@ -76,6 +76,11 @@ foreach ($view in @(@('2026-10-03T0415', '2026-10-03T04:15:00Z'), @('2026-10-03T
     '--down-condition=*' --expected-gpus 8 --log (W 'k8s-watcher.jsonl') --key-dir (W 'keys', 'k8s-watcher')
 }
 
+Step "Tickets: Jira webhooks open and close an outage; a redelivered webhook changes nothing"
+CLOut watch webhook --mapping examples/webhooks/jira-repairs.json --log (W 'tickets.jsonl') --key-dir (W 'keys', 'webhook') `
+  --replay examples/webhooks/01-repair-opened.json --replay examples/webhooks/02-repair-redelivered.json `
+  --replay examples/webhooks/03-repair-closed.json
+
 Step "Heartbeats: a node that went silent for 27 minutes shows up as unmonitored time"
 $HB = W 'evidence-gpu-001.jsonl'
 foreach ($t in @('00:00', '00:01', '00:02', '00:30', '00:31')) {
@@ -94,6 +99,9 @@ CL sla verify --statement $Statement --contract examples/contracts/hgx-16-node.y
 Step "The same month with three unmonitored stretches, under a contract that counts them as downtime"
 (CLOut sla compute --contract examples/contracts/hgx-16-node-strict.yaml --events examples/events/hgx-16-node-2026-10.jsonl `
   --events examples/events/hgx-16-node-2026-10-gaps.jsonl --period 2026-10 --format text) -split "`n" | Select-Object -First 7
+
+Step "Pilot: the statement against the provider's own downtime report"
+CL sla compare --statement $Statement --provider-report examples/pilot/provider-report-2026-10.csv --contract examples/contracts/hgx-16-node.yaml
 
 Step "Compare the provider's record with the customer's own probe"
 CL sla corroborate --contract examples/contracts/hgx-16-node.yaml --period 2026-10 `
@@ -178,6 +186,10 @@ try {
 } finally {
   if (-not $ledger.HasExited) { Stop-Process -Id $ledger.Id -Force -ErrorAction SilentlyContinue }
 }
+
+Step "Snapshot the ledger and restore it elsewhere, only after everything in it verifies against the keyring"
+CL ledger snapshot --data (W 'ledger-data') --config (W 'ledger.json') --key-dir (W 'keys', 'witness') --out (W 'ledger-snapshot.tar.gz')
+CL ledger restore --snapshot (W 'ledger-snapshot.tar.gz') --keyring $KR --data (W 'restored-ledger')
 
 Write-Host ""
 Write-Host "Done. Files are in $Work" -ForegroundColor Green
