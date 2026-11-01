@@ -1,0 +1,51 @@
+# systemd unit for the provider agent (capledger agent) on a GPU host that is
+# not run by Kubernetes. It follows the kernel log through journald's
+# kern.log file rather than /dev/kmsg, so it needs no root: the service user
+# only has to be able to read the log (group adm on Debian and Ubuntu).
+#
+#   install -m 0755 bin/capledger /usr/local/bin/capledger
+#   install -m 0644 deploy/systemd/capledger-agent.service /etc/systemd/system/
+#   systemctl daemon-reload && systemctl enable --now capledger-agent
+#
+# The node's own key and its evidence log live in /var/lib/capledger. Enrol
+# the key once the log exists:
+#   capledger keyring import --keyring keyring.json --log /var/lib/capledger/evidence.jsonl \
+#     --owner "Example Neocloud" --role provider-agent
+# On AMD hosts add --vendor amd. Remove --redact to keep process names.
+# Without rsyslog there is no /var/log/kern.log: run the agent as root with
+# --source kmsg instead, or pipe "journalctl -k -f -o short-iso" into
+# "capledger agent --source -".
+[Unit]
+Description=GPU Sentinel agent (capledger agent)
+After=network-online.target systemd-journald.service
+
+[Service]
+ExecStart=/usr/local/bin/capledger agent \
+  --node %H \
+  --source /var/log/kern.log \
+  --log /var/lib/capledger/evidence.jsonl \
+  --key-dir /var/lib/capledger/keys \
+  --expected-gpus 8 \
+  --heartbeat 1m \
+  --redact
+Restart=always
+RestartSec=5
+DynamicUser=yes
+SupplementaryGroups=adm
+StateDirectory=capledger
+StateDirectoryMode=0750
+UMask=0027
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictNamespaces=yes
+LockPersonality=yes
+SystemCallFilter=@system-service
+CapabilityBoundingSet=
+
+[Install]
+WantedBy=multi-user.target
