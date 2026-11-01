@@ -1,0 +1,6 @@
+# Example Neocloud's own downtime report for October 2026, as its status page
+# showed it (illustrative). Compare it with the statement computed from signed
+# evidence: capledger sla compare --statement ... --provider-report this file
+node,downtime_seconds
+gpu-003,7200
+gpu-016,28800
