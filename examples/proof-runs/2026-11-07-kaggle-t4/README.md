@@ -25,10 +25,20 @@ echo '<3>NVRM: Xid (PCI:0000:00:04): 79, GPU has fallen off the bus' >> kern.log
 [`events.jsonl`](events.jsonl) is the resulting log, unedited. The agent
 recorded a signed `down` event (seq 4) within about two seconds, with a
 `xid:79` cause, preceded by its own signing key record and heartbeats.
+[`agent.log`](agent.log) is that agent's own console output (`created
+signing key ... / observed xid 79 ... / event ... down ...`), and
+[`signing-key.pub.pem`](signing-key.pub.pem) is the public half of the key it
+signed with, verbatim from the session (it matches the `publicKey` field
+embedded in `events.jsonl`'s first entry).
+
+A second agent instance was started against `kern2.log` for the overhead
+test below; [`events2.jsonl`](events2.jsonl) and [`agent2.log`](agent2.log)
+are its unedited log and console output — seven entries, all heartbeats,
+since no fault was fed to this instance.
 
 ## Results
 
-- **Signed chain verifies**: `capledger evidence verify --log events.jsonl --pub keys/capledger.pub.pem --format text` printed:
+- **Signed chain verifies**: `capledger evidence verify --log events.jsonl --pub signing-key.pub.pem --format text` printed:
 
   ```
   events.jsonl  OK  6 entries, keys [8fdc64d260fd9c46], merkle root 5b986fa83d775f7e8f9c0ec93499ebd3252e6e5deea8e890c0ffb0b2741befde
