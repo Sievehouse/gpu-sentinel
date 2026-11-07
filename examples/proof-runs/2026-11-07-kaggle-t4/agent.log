@@ -1,0 +1,5 @@
+created signing key 8fdc64d260fd9c46 in keys
+capledger agent 0.5.0: node 5a7258f2e66c, vendor nvidia, key 8fdc64d260fd9c46, policy starter-v0.2, source kern.log
+observed xid 79 on 0000:00:04 (node_down): GPU has fallen off the bus
+event 8fdc64d260fd9c46-4 down on 5a7258f2e66c at 2026-11-07T06:07:52Z (xid:79)
+processed 1 lines: 1 observations, 1 events, 0 suppressed, 3 heartbeats
