@@ -1,0 +1,9 @@
+{
+  "pid": 2312,
+  "seconds": 30.0,
+  "cpuPercentOfOneCore": 0.067,
+  "peakRssMB": 11.4,
+  "cpuLimitPercent": 1.0,
+  "rssLimitMB": 200.0,
+  "pass": true
+}
